@@ -1,0 +1,7 @@
+body {
+  background-image: url("library.jpg");
+  background-size: cover; /* Adjust the background size as needed */
+  background-position: center; /* Center the background image */
+  background-repeat: no-repeat; /* Prevent the background image from repeating */
+  color: #ffffff; /* Set text color to contrast with the background */
+}
