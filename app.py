@@ -1,6 +1,7 @@
 from flask import Flask, render_template,flash, redirect, url_for
 from flask_sqlalchemy import SQLAlchemy
 from forms import RegistrationForm, LoginForm, SPRegistrationForm, SPLoginForm
+from datetime import datetime
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'cf5502128e89ac7e636ca2dd6c913212'
@@ -24,16 +25,30 @@ class SPUser(db.Model):
   admin_id = db.Column(db.Integer, unique=True, nullable=False)
   image_file = db.Column(db.String(20), nullable=False, default='default.jpg')
   password = db.Column(db.String(60), nullable=False)
+  books = db.relationship('Book', backref='librarian', lazy=True)
 
   def __repr__(self):
-    return f"User('{self.username}'), '{self.email}', '{self.image_file}'"
+    return f"SPUser('{self.username}'), '{self.email}', '{self.image_file}'"
 
+# class Section(db.Model):
+#   id = db.Column(db.String(20), unique=True, nullable=False)
+#   name = db.Column(db.String(100), unique=True, nullable=False)
+#   date_created = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
+#   description = db.Column(db.String(200), unique=True, nullable=False)
+#   books = db.relationship('Book', backref='recipient', lazy=True)
 class Book(db.Model):
-  id = db.Column(db.String(20), unique=True, nullable=False)
+  id = db.Column(db.Integer, primary_key=True)
   title = db.Column(db.String(100), unique=True, nullable=False)
   author = db.Column(db.String(100), unique=True, nullable=False)
   genre = db.Column(db.String(100), unique=True, nullable=False)
+  content = db.Column(db.Text, nullable=False)
   rating = db.Column(db.Integer, unique=True, nullable=False)
+  release_year = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
+  sp_id = db.Column(db.Integer, db.ForeignKey('sp_user.admin_id'), nullable=False)
+  # date_issued = 
+  def __repr__(self):
+    return f"Book('{self.title}'), '{self.author}'"
+
 
 BOOKS = [
     {
