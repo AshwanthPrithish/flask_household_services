@@ -31,18 +31,25 @@
             <li class="nav-item">
               <a class="nav-link" href="{{ url_for('contact') }}">Contact</a>
             </li>
-            <li class="nav-item">
-              <a class="nav-link" href="{{ url_for('login') }}">General User Login</a>
-            </li>
-            <li class="nav-item">
-              <a class="nav-link" href="{{ url_for('register') }}">General User Register</a>
-            </li>
-            <li class="nav-item">
-              <a class="nav-link" href="{{ url_for('sp_login') }}">Admin Login</a>
-            </li>
-            <li class="nav-item">
-              <a class="nav-link" href="{{ url_for('sp_register') }}">Admin Register</a>
-            </li>
+            {% if current_user.is_authenticated %}
+                <li class="nav-item">
+                  <a class="nav-link" href="{{ url_for('account') }}">Account</a>
+                  <a class="nav-link" href="{{ url_for('logout') }}">Logout</a>
+                </li>
+            {% else %}
+                <li class="nav-item">
+                  <a class="nav-link" href="{{ url_for('login') }}">General User Login</a>
+                </li>
+                <li class="nav-item">
+                  <a class="nav-link" href="{{ url_for('register') }}">General User Register</a>
+                </li>
+                <li class="nav-item">
+                  <a class="nav-link" href="{{ url_for('sp_login') }}">Admin Login</a>
+                </li>
+                <li class="nav-item">
+                  <a class="nav-link" href="{{ url_for('sp_register') }}">Admin Register</a>
+                </li>
+            {% endif %}
           </ul>
         </div>
       </nav>

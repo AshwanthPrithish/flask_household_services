@@ -13,6 +13,7 @@ class Student(db.Model, UserMixin):
     image_file = db.Column(db.String(20), nullable=False, default='default.jpg')
     password = db.Column(db.String(60), nullable=False)
     book_issues = db.relationship('BookIssue', backref='student', lazy=True)
+    role = "student"
 
     def __repr__(self):
         return f"Student('{self.username}', '{self.email}', '{self.image_file}')"
@@ -26,6 +27,7 @@ class Librarian(db.Model, UserMixin):
     password = db.Column(db.String(60), nullable=False)
     books = db.relationship('Book', backref='librarian_admin', lazy=True)
     book_issues = db.relationship('BookIssue', backref='librarian', lazy=True)
+    role = "librarian"
 
     def __repr__(self):
         return f"Librarian('{self.username}', '{self.email}', '{self.image_file}')"

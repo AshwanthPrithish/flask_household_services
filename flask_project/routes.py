@@ -2,7 +2,7 @@ from flask import render_template,flash, redirect, url_for
 from flask_project import app, db, bcrypt
 from flask_project.forms import RegistrationForm, LoginForm, SPRegistrationForm, SPLoginForm
 from flask_project.models import Student, Librarian, Book, BookIssue
-from flask_login import login_user
+from flask_login import login_user, current_user, logout_user, login_required
 
 with app.app_context():
   db.create_all()
@@ -50,7 +50,27 @@ BOOKS = [
 @app.route("/")
 @app.route("/home")
 def home():
+  
   return render_template("home.html", title="Home")
+
+@app.route("/student-dash")
+@login_required
+def student_dash():
+  if current_user.role == "student":
+       return render_template("student_dashboard.html", title="Student Dashboard")
+  else:
+       flash("Access Denied! You do not have permission to view this page.", "danger")
+       return redirect(url_for("home"))
+
+@app.route("/sp-dash")
+@login_required
+def sp_dash():
+  if current_user.role == "librarian":
+       return render_template("sp_dashboard.html", title="Librarian Dashboard", content1=current_user)
+  else:
+       flash("Access Denied! You do not have permission to view this page.", "danger")
+       return redirect(url_for("home"))
+
 
 @app.route("/books")
 def books():
@@ -75,6 +95,12 @@ def librarian():
 
 @app.route("/register", methods=['GET', 'POST'])
 def register():
+  if current_user.is_authenticated:
+    if current_user.role == "student":
+       return redirect(url_for('student_dash'))
+    else:
+       flash("Access Denied! You do not have permission to view this page.", "danger")
+       return redirect(url_for("home"))
   form = RegistrationForm()
   if form.validate_on_submit():
     hashed_password = bcrypt.generate_password_hash(form.password.data).decode('utf-8')
@@ -83,24 +109,36 @@ def register():
       db.session.add(student)
       db.session.commit()
 
-    flash(f'Your Student Account has been created! Proceed to Login', 'success')
-    return redirect(url_for("home"))
+    flash(f'Your Student Account has been created!', 'success')
+    return redirect(url_for("login"))
   return render_template("register.html", title="Register", form=form)
 
 @app.route("/login", methods=['GET', 'POST'])
 def login():
   form = LoginForm()
+  if current_user.is_authenticated:
+    if current_user.role == "student":
+       return redirect(url_for('student_dash'))
+    else:
+       flash("Access Denied! You do not have permission to view this page.", "danger")
+       return redirect(url_for("home"))
   if form.validate_on_submit():
     student = Student.query.filter_by(email=form.email.data).first()
     if student and bcrypt.check_password_hash(student.password, form.password.data):
       login_user(student, remember=form.remember.data)
-      return redirect(url_for('home'))
+      return redirect(url_for('student_dash'))
     else:
       flash('Login unsuccessful, please check email, and password', 'danger')
   return render_template("login.html", title="Login", form=form)
 
 @app.route("/sp-register", methods=['GET', 'POST'])
 def sp_register():
+  if current_user.is_authenticated:
+    if current_user.role == "librarian":
+       return redirect(url_for('sp_dash'))
+    else:
+       flash("Access Denied! You do not have permission to view this page.", "danger")
+       return redirect(url_for("home"))
   form = SPRegistrationForm()
   if form.validate_on_submit():
     hashed_password = bcrypt.generate_password_hash(form.password.data).decode('utf-8')
@@ -110,17 +148,40 @@ def sp_register():
       db.session.commit()
 
     flash(f'Account Created for Admin {form.username.data}!', 'success')
-    return redirect(url_for("home"))
+    return redirect(url_for("sp_login"))
   return render_template("sp_register.html", title="Admin Register", form=form)
 
 @app.route("/sp-login", methods=['GET', 'POST'])
 def sp_login():
   form = SPLoginForm()
+  if current_user.is_authenticated:
+    if current_user.role == "librarian":
+       return redirect(url_for('sp_dash'))
+    else:
+       flash(f"Access Denied! You do not have permission to view this page.{current_user.is_authenticated}", "danger")
+       return redirect(url_for("home"))
+  
   if form.validate_on_submit():
     librarian = Librarian.query.filter_by(email=form.email.data).first()
     if librarian and bcrypt.check_password_hash(librarian.password, form.password.data):
       login_user(librarian, remember=form.remember.data)
-      return redirect(url_for('home'))
+      return redirect(url_for('sp_dash'))
     else:
       flash('Login unsuccessful, please check email, and password', 'danger')
   return render_template("sp_login.html", title="Admin Login", form=form)
+
+@app.route("/logout")
+def logout():
+  logout_user()
+  return redirect(url_for('home'))
+
+@app.route("/account")
+@login_required
+def account():
+  if current_user.role == "student":
+        return render_template("student_account.html", title="Student Account")
+  elif current_user.role == "librarian":
+        return render_template("sp_account.html", title="Librarian Account")
+  else:
+        flash(f"Access Denied! You do not have permission to view this page.{current_user.role} acc", "danger")
+        return redirect(url_for("home"))
