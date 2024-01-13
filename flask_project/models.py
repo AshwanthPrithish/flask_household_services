@@ -3,11 +3,20 @@ from datetime import datetime
 from flask_login import UserMixin
 
 @login_manager.user_loader
-def load_user(student_id):
-    return Student.query.get(int(student_id))
+def load_user(user_id):
+    # Assuming that the user_id is the primary key of your User model
+    user = None
+    
+    if (int(user_id) >= 10000):
+        user = Librarian.query.filter_by(id=int(user_id)).first()
+    else:
+        # Try to load the user as a Student
+        user = Student.query.filter_by(id=int(user_id)).first()
+    
+    return user
 
 class Student(db.Model, UserMixin):
-    id = db.Column(db.Integer, primary_key=True)
+    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     username = db.Column(db.String(20), unique=True, nullable=False)
     email = db.Column(db.String(120), unique=True, nullable=False)
     image_file = db.Column(db.String(20), nullable=False, default='default.jpg')
@@ -19,7 +28,7 @@ class Student(db.Model, UserMixin):
         return f"Student('{self.username}', '{self.email}', '{self.image_file}')"
 
 class Librarian(db.Model, UserMixin):
-    id = db.Column(db.Integer, primary_key=True)
+    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     username = db.Column(db.String(20), unique=True, nullable=False)
     email = db.Column(db.String(120), unique=True, nullable=False)
     admin_id = db.Column(db.String(20), unique=True, nullable=False)

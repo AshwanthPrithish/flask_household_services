@@ -66,7 +66,7 @@ def student_dash():
 @login_required
 def sp_dash():
   if current_user.role == "librarian":
-       return render_template("sp_dashboard.html", title="Librarian Dashboard", content1=current_user)
+       return render_template("sp_dashboard.html", title="Librarian Dashboard")
   else:
        flash("Access Denied! You do not have permission to view this page.", "danger")
        return redirect(url_for("home"))
@@ -83,14 +83,6 @@ def about_us():
 @app.route("/contact")
 def contact():
   return render_template("contact.html", title="Contact")
-
-@app.route("/general-user")
-def general_user():
-  return render_template("general_user.html", title="General User")
-
-@app.route("/librarian")
-def librarian():
-  return render_template("librarian.html", title="Librarian")
 
 
 @app.route("/register", methods=['GET', 'POST'])
@@ -158,7 +150,7 @@ def sp_login():
     if current_user.role == "librarian":
        return redirect(url_for('sp_dash'))
     else:
-       flash(f"Access Denied! You do not have permission to view this page.{current_user.is_authenticated}", "danger")
+       flash(f"Access Denied! You do not have permission to view this page.", "danger")
        return redirect(url_for("home"))
   
   if form.validate_on_submit():
