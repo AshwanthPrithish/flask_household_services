@@ -241,15 +241,13 @@ def update_section(section_id):
      section.date_created = form.date_created.data
      section.librarian_username = current_user.username
      db.session.commit()
-     flash(f'Updated the Section successfully{section.description}', 'success')
-     with app.app_context():
-        books = Book.query.filter_by(genre_id=section_id).all()
-     return redirect(url_for('section', section_id=section.id, book_list=books))
+     flash(f'Updated the Section successfully', 'success')
+     return redirect(url_for('section', section_id=section.id))
   elif request.method == 'GET':
     form.title.data = section.name
     form.content.data = section.description
     form.date_created.data = section.date_created
-  return render_template('create_section.html', title='Update Post', section=section, form=form, legend='Update Section')
+  return render_template('create_section.html', title='Update Section', section=section, form=form, legend='Update Section')
 
 @app.route("/section/<int:section_id>/delete", methods=['POST'])
 @login_required
@@ -280,9 +278,7 @@ def add_book(section_id):
         db.session.commit()
         flash('The Book has been Added Successfully.', 'success')
      
-     with app.app_context():
-        books = Book.query.filter_by(genre_id=section_id).all()
-     return redirect(url_for('section', section_id=section_id, book_list=books))
+     return redirect(url_for('section', section_id=section_id))
   
   return render_template('add_book.html', title="Add a new Book", form=form, legend='New Book')
 
@@ -303,11 +299,9 @@ def update_book(section_id, book_id):
         book.rating=form.rating.data
         book.release_year=form.release_year.data
         db.session.commit()
-        flash(f'The Book has been Updated Successfully.{form.rating.data}', 'success')
+        flash(f'The Book has been Updated Successfully.', 'success')
     
-        with app.app_context():
-          books = Book.query.filter_by(genre_id=section_id).all()
-        return redirect(url_for('section', section_id=section_id, book_list=books))
+        return redirect(url_for('section', section_id=section_id))
   elif request.method == 'GET':
     form.title.data = book.title
     form.author.data = book.author

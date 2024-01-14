@@ -115,5 +115,5 @@ class BookAddForm(FlaskForm):
     author = StringField('Author', validators=[DataRequired()])
     content = TextAreaField('Content', validators=[DataRequired()])
     rating = IntegerField('Rating', validators=[DataRequired()])
-    release_year = DateTimeField('Release Date(yyyy)', format="%Y", validators=[DataRequired()])
+    release_year = DateTimeField('Release Year(yyyy)', format="%Y", validators=[DataRequired()])
     submit = SubmitField('Add Book')
