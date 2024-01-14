@@ -9,6 +9,7 @@
       integrity="sha384-T3c6CoIi6uLrA9TneNEoa7RxnatzjcDSCmG1MXxSR1GAsXEV/Dwwykc2MPK8M2HN"
       crossorigin="anonymous"
     />
+    <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='styles.css') }}">
     <title>{{ title }} - Library Management System</title>
   </head>
   <body>
@@ -34,11 +35,15 @@
             {% if current_user.is_authenticated %}
                 <li class="nav-item">
                   {% if current_user.role == 'student' %}
-                  <a class="nav-link" href="{{ url_for('student_dash') }}">Dashboard</a>
+                    <a class="nav-link" href="{{ url_for('student_dash') }}">Dashboard</a>
                   {% else %}
-                  <a class="nav-link" href="{{ url_for('sp_dash') }}">Dashboard</a>
+                    <a class="nav-link" href="{{ url_for('sp_dash') }}">Dashboard</a>
                   {% endif %}
+                </li>
+                <li>
                   <a class="nav-link" href="{{ url_for('account') }}">Account</a>
+                </li>
+                <li>
                   <a class="nav-link" href="{{ url_for('logout') }}">Logout</a>
                 </li>
             {% else %}

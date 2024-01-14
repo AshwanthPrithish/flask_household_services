@@ -1,6 +1,9 @@
-from flask import render_template,flash, redirect, url_for
+import secrets
+import os
+from PIL import Image
+from flask import render_template,flash, redirect, url_for, request
 from flask_project import app, db, bcrypt
-from flask_project.forms import RegistrationForm, LoginForm, SPRegistrationForm, SPLoginForm
+from flask_project.forms import RegistrationForm, LoginForm, SPRegistrationForm, SPLoginForm, UpdateStudentAccount, UpdateSPAccount
 from flask_project.models import Student, Librarian, Book, BookIssue
 from flask_login import login_user, current_user, logout_user, login_required
 
@@ -167,13 +170,66 @@ def logout():
   logout_user()
   return redirect(url_for('home'))
 
-@app.route("/account")
+
+def save_picture(form_picture, role):
+   random_hex = secrets.token_hex(8)
+   _, ext = os.path.splitext(form_picture.filename)
+   picture_fn = random_hex + ext
+   picture_path = os.path.join(app.root_path, f'static/profile_pics/{role}', picture_fn)
+   
+   output_size = (125, 125)
+   i = Image.open(form_picture)
+   i.thumbnail(output_size)
+   i.save(picture_path)
+   
+   return picture_fn
+
+@app.route("/account", methods=["GET", "POST"])
 @login_required
 def account():
+  image_file = None
   if current_user.role == "student":
-        return render_template("student_account.html", title="Student Account")
+        form = UpdateStudentAccount()
+        if form.validate_on_submit():
+            if form.picture.data:
+               picture_file = save_picture(form.picture.data, 'student_pics')
+               with app.app_context():
+                current_user.image_file = picture_file
+                db.session.commit()
+            with app.app_context():
+              current_user.username = form.username.data
+              current_user.email = form.email.data
+              db.session.commit()
+            flash('Your Account has been updated!', category='success')
+            return redirect(url_for('account'))
+        elif request.method == "GET":
+           form.username.data = current_user.username
+           form.email.data = current_user.email
+        image_file = url_for('static', filename='profile_pics/student_pics/' + current_user.image_file)
+        return render_template("student_account.html", title="Student Account", image_file=image_file, form=form)
+  
   elif current_user.role == "librarian":
-        return render_template("sp_account.html", title="Librarian Account")
+        form = UpdateSPAccount()
+        if form.validate_on_submit():
+            if form.picture.data:
+               picture_file = save_picture(form.picture.data, 'admin_pics')
+               with app.app_context():
+                current_user.image_file = picture_file
+                db.session.commit()
+            with app.app_context():
+              current_user.username = form.username.data
+              current_user.email = form.email.data
+              current_user.admin_id = form.admin_id.data
+              db.session.commit()
+            flash('Your Account has been updated!', category='success')
+            return redirect(url_for('account'))
+        elif request.method == "GET":
+           form.username.data = current_user.username
+           form.email.data = current_user.email
+           form.admin_id.data = current_user.admin_id
+        image_file = url_for('static', filename='profile_pics/admin_pics/' + current_user.image_file)
+        return render_template("sp_account.html", title="Librarian Account", image_file=image_file, form=form)
+  
   else:
         flash(f"Access Denied! You do not have permission to view this page.{current_user.role} acc", "danger")
         return redirect(url_for("home"))
