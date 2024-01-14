@@ -35,6 +35,7 @@ class Librarian(db.Model, UserMixin):
     image_file = db.Column(db.String(20), nullable=False, default='default.jpg')
     password = db.Column(db.String(60), nullable=False)
     books = db.relationship('Book', backref='librarian_admin', lazy=True)
+    genres = db.relationship('Genre', backref='librarian_admin', lazy=True)
     book_issues = db.relationship('BookIssue', backref='librarian', lazy=True)
     role = "librarian"
 
@@ -44,7 +45,10 @@ class Librarian(db.Model, UserMixin):
 class Genre(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(100), unique=True, nullable=False)
+    date_created = db.Column(db.DateTime, default=datetime.now)
+    description = db.Column(db.String(100), nullable=False, default="Description yet to be added.")
     books = db.relationship('Book', backref='genre_of_book', lazy=True)
+    librarian_username = db.Column(db.String(20), db.ForeignKey('librarian.username'), nullable=False)
 
     def __repr__(self):
         return f"Genre('{self.name}', {self.books})"

@@ -1,0 +1,34 @@
+{% extends "layout.html" %} {% block content %}
+<h1>Section Details</h1>
+<div class="container">
+  <div>
+    <a class="btn btn-secondary btn-sm m-1" href="{{ url_for('update_section', section_id=section.id) }}">Update</a>
+    <button type="button" class="btn btn-danger btn-sm m-1" data-toggle="modal" data-target="#deleteModal">Delete</button>
+  </div>
+  <b>Added by Librarian:</b> {{ section['librarian_username'] }}<br />
+  <b>Date Created:</b> {{ section['date_created'].strftime("%d-%m-%Y") }}<br />
+  <b>Section Name:</b> {{ section['name'] }}<br />
+  <b>Description:</b> {{ section['description'] }}<br />
+</div>
+<br />
+
+<div class="modal fade" id="deleteModal" tabindex="-1" role="dialog" aria-labelledby="deleteLabel" aria-hidden="true">
+  <div class="modal-dialog" role="document">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="deleteModalLabel">Delete Section?</h5>
+        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+          <span aria-hidden="true">&times;</span>
+        </button>
+      </div>
+      
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+        <form action="{{ url_for('delete_section', section_id=section.id) }}" method="POST">
+           <input type="submit" class="btn btn-danger" value="Delete" />
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock content %}

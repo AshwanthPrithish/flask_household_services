@@ -1,59 +1,20 @@
 import secrets
 import os
+
+from datetime import datetime
 from PIL import Image
 from flask import render_template,flash, redirect, url_for, request
 from flask_project import app, db, bcrypt
-from flask_project.forms import RegistrationForm, LoginForm, SPRegistrationForm, SPLoginForm, UpdateStudentAccount, UpdateSPAccount
-from flask_project.models import Student, Librarian, Book, BookIssue
+from flask_project.forms import RegistrationForm, LoginForm, SPRegistrationForm, SPLoginForm, UpdateStudentAccount, UpdateSPAccount, SectionForm
+from flask_project.models import Student, Librarian, Book, BookIssue, Genre
 from flask_login import login_user, current_user, logout_user, login_required
 
 with app.app_context():
   db.create_all()
 
-BOOKS = [
-    {
-        "book_id": 1,
-        "title": "The Great Gatsby",
-        "author": "F. Scott Fitzgerald",
-        "genre": "Classic",
-        "rating": 7.5,
-        "release_year": 1925
-    },
-    {
-        "book_id": 2,
-        "title": "To Kill a Mockingbird",
-        "author": "Harper Lee",
-        "genre": "Fiction",
-        "release_year": 1960
-    },
-    {
-        "book_id": 3,
-        "title": "1984",
-        "author": "George Orwell",
-        "genre": "Dystopian",
-        "rating": 8,
-        "release_year": 1949
-    },
-    {
-        "book_id": 4,
-        "title": "The Hobbit",
-        "author": "J.R.R. Tolkien",
-        "genre": "Fantasy",
-        "release_year": 1937
-    },
-    {
-        "book_id": 5,
-        "title": "The Catcher in the Rye",
-        "author": "J.D. Salinger",
-        "genre": "Coming-of-age",
-        "release_year": 1951
-    }
-]
-
 @app.route("/")
 @app.route("/home")
 def home():
-  
   return render_template("home.html", title="Home")
 
 @app.route("/student-dash")
@@ -75,9 +36,11 @@ def sp_dash():
        return redirect(url_for("home"))
 
 
-@app.route("/books")
-def books():
-  return render_template("books.html", book_list=BOOKS, title="Book List")
+@app.route("/sections")
+def sections():
+  with app.app_context():
+     sections_ = Genre.query.all()
+  return render_template("sections.html", section_list=sections_, title="Book List")
 
 @app.route("/about-us")
 def about_us():
@@ -233,3 +196,66 @@ def account():
   else:
         flash(f"Access Denied! You do not have permission to view this page.{current_user.role} acc", "danger")
         return redirect(url_for("home"))
+  
+@app.route("/section/new", methods=['GET', 'POST'])
+@login_required
+def new_section():
+  if current_user.role != "librarian":
+    flash(f"Access Denied! You do not have permission to view this page.{current_user.role} acc", "danger")
+    return redirect(url_for("home"))
+  
+  form = SectionForm()
+  if form.validate_on_submit():
+      if form.date_created.data == '':
+        section = Genre(name=form.title.data, description=form.content.data, librarian_username=current_user.username)
+      else:
+        d = form.date_created.data
+        section = Genre(name=form.title.data, description=form.content.data, date_created=d, librarian_username=current_user.username)
+      with app.app_context():
+         db.session.add(section)
+         db.session.commit()
+         flash('The Section has been created!', 'success')
+      return redirect(url_for('sp_dash'))
+  return render_template('create_section.html', title="New Section", form=form, legend='New Section')
+  
+@app.route("/section/<int:section_id>")
+def section(section_id):
+  section = Genre.query.get_or_404(section_id)
+  return render_template('section.html', title=section.name, section=section)
+
+@app.route("/section/<int:section_id>/update", methods=['GET', 'POST'])
+@login_required
+def update_section(section_id):
+  if current_user.role != "librarian":
+    flash(f"Access Denied! You do not have permission to view this page.{current_user.role} acc", "danger")
+    return redirect(url_for("home"))
+  
+  section = Genre.query.get_or_404(section_id)
+  form = SectionForm()
+  if form.validate_on_submit():
+     section.name = form.title.data
+     section.description = form.content.data
+     section.date_created = form.date_created.data
+     section.librarian_username = current_user.username
+     db.session.commit()
+     flash('Updated the Section successfully', 'success')
+     return redirect(url_for('section', section_id=section.id))
+  elif request.method == 'GET':
+    form.title.data = section.name
+    form.content.data = section.description
+    form.date_created.data = section.date_created
+  return render_template('create_section.html', title='Update Post', section=section, form=form, legend='Update Section')
+
+@app.route("/section/<int:section_id>/delete", methods=['POST'])
+@login_required
+def delete_section(section_id):
+  if current_user.role != "librarian":
+    flash(f"Access Denied! You do not have permission to view this page.{current_user.role} acc", "danger")
+    return redirect(url_for("home"))
+  
+  with app.app_context():
+     section = Genre.query.get_or_404(section_id)
+     db.session.delete(section)
+     db.session.commit()
+     flash('Section Deleted!', 'success')
+     return redirect(url_for('sections'))

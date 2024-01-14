@@ -1,6 +1,6 @@
 from flask_wtf import FlaskForm
 from flask_wtf.file import FileField, FileAllowed
-from wtforms import StringField, PasswordField, SubmitField, BooleanField
+from wtforms import StringField, PasswordField, SubmitField, BooleanField, DateTimeField, TextAreaField
 from wtforms.validators import DataRequired, Length, Email, EqualTo, Regexp, ValidationError
 from flask_project.models import Student, Librarian
 from flask_login import current_user
@@ -103,3 +103,10 @@ class UpdateSPAccount(FlaskForm):
                 raise ValidationError('Librarian with that admin ID already exits. Try another one.')
             elif int(admin_id.data) not in [48236, 76541, 23985, 50472, 19847, 65329, 31784, 92651, 84063, 57214]:
                 raise ValidationError(f'Unauthorized Admin ID. Contact Organization for further action.')
+            
+class SectionForm(FlaskForm):
+    title = StringField('Title', validators=[DataRequired()])
+    date_created = DateTimeField('Date Added(Format dd-mm-yyyy)', format="%d-%m-%Y", validators=[])
+    content = TextAreaField('Content', validators=[DataRequired()])
+    submit = SubmitField('Add Section')
+    
