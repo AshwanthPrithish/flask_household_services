@@ -1,6 +1,6 @@
 from flask_wtf import FlaskForm
 from flask_wtf.file import FileField, FileAllowed
-from wtforms import StringField, PasswordField, SubmitField, BooleanField, DateTimeField, TextAreaField
+from wtforms import StringField, PasswordField, SubmitField, BooleanField, DateTimeField, TextAreaField, IntegerField
 from wtforms.validators import DataRequired, Length, Email, EqualTo, Regexp, ValidationError
 from flask_project.models import Student, Librarian
 from flask_login import current_user
@@ -106,7 +106,14 @@ class UpdateSPAccount(FlaskForm):
             
 class SectionForm(FlaskForm):
     title = StringField('Title', validators=[DataRequired()])
-    date_created = DateTimeField('Date Added(Format dd-mm-yyyy)', format="%d-%m-%Y", validators=[])
+    date_created = DateTimeField('Date Added(Format dd-mm-yyyy)', format="%d-%m-%Y", validators=[DataRequired()])
     content = TextAreaField('Content', validators=[DataRequired()])
     submit = SubmitField('Add Section')
     
+class BookAddForm(FlaskForm):
+    title = StringField('Title', validators=[DataRequired()])
+    author = StringField('Author', validators=[DataRequired()])
+    content = TextAreaField('Content', validators=[DataRequired()])
+    rating = IntegerField('Rating', validators=[DataRequired()])
+    release_year = DateTimeField('Release Date(yyyy)', format="%Y", validators=[DataRequired()])
+    submit = SubmitField('Add Book')

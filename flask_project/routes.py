@@ -5,7 +5,7 @@ from datetime import datetime
 from PIL import Image
 from flask import render_template,flash, redirect, url_for, request
 from flask_project import app, db, bcrypt
-from flask_project.forms import RegistrationForm, LoginForm, SPRegistrationForm, SPLoginForm, UpdateStudentAccount, UpdateSPAccount, SectionForm
+from flask_project.forms import RegistrationForm, LoginForm, SPRegistrationForm, SPLoginForm, UpdateStudentAccount, UpdateSPAccount, SectionForm, BookAddForm
 from flask_project.models import Student, Librarian, Book, BookIssue, Genre
 from flask_login import login_user, current_user, logout_user, login_required
 
@@ -215,13 +215,16 @@ def new_section():
          db.session.add(section)
          db.session.commit()
          flash('The Section has been created!', 'success')
-      return redirect(url_for('sp_dash'))
+      return redirect(url_for('sections'))
   return render_template('create_section.html', title="New Section", form=form, legend='New Section')
   
 @app.route("/section/<int:section_id>")
 def section(section_id):
-  section = Genre.query.get_or_404(section_id)
-  return render_template('section.html', title=section.name, section=section)
+  with app.app_context():
+    section = Genre.query.get_or_404(section_id)
+  with app.app_context():
+        books = Book.query.filter_by(genre_id=section_id).all()
+  return render_template('section.html', title=section.name, section=section, book_list=books)
 
 @app.route("/section/<int:section_id>/update", methods=['GET', 'POST'])
 @login_required
@@ -238,8 +241,10 @@ def update_section(section_id):
      section.date_created = form.date_created.data
      section.librarian_username = current_user.username
      db.session.commit()
-     flash('Updated the Section successfully', 'success')
-     return redirect(url_for('section', section_id=section.id))
+     flash(f'Updated the Section successfully{section.description}', 'success')
+     with app.app_context():
+        books = Book.query.filter_by(genre_id=section_id).all()
+     return redirect(url_for('section', section_id=section.id, book_list=books))
   elif request.method == 'GET':
     form.title.data = section.name
     form.content.data = section.description
@@ -250,7 +255,7 @@ def update_section(section_id):
 @login_required
 def delete_section(section_id):
   if current_user.role != "librarian":
-    flash(f"Access Denied! You do not have permission to view this page.{current_user.role} acc", "danger")
+    flash(f"Access Denied! You do not have permission to view this page.{current_user.role}", "danger")
     return redirect(url_for("home"))
   
   with app.app_context():
@@ -259,3 +264,70 @@ def delete_section(section_id):
      db.session.commit()
      flash('Section Deleted!', 'success')
      return redirect(url_for('sections'))
+  
+@app.route("/section/<int:section_id>/add-book", methods=['GET', 'POST'])
+@login_required
+def add_book(section_id):
+  if current_user.role != "librarian":
+    flash(f"Access Denied! You do not have permission to view this page.{current_user.role} acc", "danger")
+    return redirect(url_for("home"))
+  
+  form = BookAddForm()
+  if form.validate_on_submit():
+     book = Book(title=form.title.data,author=form.author.data,content=form.content.data,rating=form.rating.data,release_year=form.release_year.data,librarian_id=current_user.id,genre_id=section_id)
+     with app.app_context():
+        db.session.add(book)
+        db.session.commit()
+        flash('The Book has been Added Successfully.', 'success')
+     
+     with app.app_context():
+        books = Book.query.filter_by(genre_id=section_id).all()
+     return redirect(url_for('section', section_id=section_id, book_list=books))
+  
+  return render_template('add_book.html', title="Add a new Book", form=form, legend='New Book')
+
+@app.route("/section/<int:section_id>/<int:book_id>/update-book", methods=['GET', 'POST'])
+@login_required
+def update_book(section_id, book_id):
+  if current_user.role != "librarian":
+    flash(f"Access Denied! You do not have permission to view this page.{current_user.role} acc", "danger")
+    return redirect(url_for("home"))
+  
+  book = Book.query.get_or_404(book_id)
+  form = BookAddForm()
+  if form.validate_on_submit():
+     
+        book.title=form.title.data
+        book.author=form.author.data
+        book.content=form.content.data
+        book.rating=form.rating.data
+        book.release_year=form.release_year.data
+        db.session.commit()
+        flash(f'The Book has been Updated Successfully.{form.rating.data}', 'success')
+    
+        with app.app_context():
+          books = Book.query.filter_by(genre_id=section_id).all()
+        return redirect(url_for('section', section_id=section_id, book_list=books))
+  elif request.method == 'GET':
+    form.title.data = book.title
+    form.author.data = book.author
+    form.content.data = book.content
+    form.rating.data = book.rating
+    form.release_year.data = book.release_year
+
+     
+  return render_template('add_book.html', title="Update this Book", form=form, legend='Update Book')
+
+@app.route("/section/<int:section_id>/<int:book_id>/delete", methods=['POST'])
+@login_required
+def delete_book(section_id, book_id):
+  if current_user.role != "librarian":
+    flash(f"Access Denied! You do not have permission to view this page.{current_user.role}", "danger")
+    return redirect(url_for("home"))
+  
+  with app.app_context():
+     book = Book.query.get_or_404(book_id)
+     db.session.delete(book)
+     db.session.commit()
+     flash('Book Deleted!', 'success')
+     return redirect(url_for('section', section_id=section_id))

@@ -57,13 +57,12 @@ class Book(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     title = db.Column(db.String(100), unique=True, nullable=False)
     author = db.Column(db.String(100), nullable=False)
-    genre = db.Column(db.String(100), nullable=False)
     content = db.Column(db.Text, nullable=False)
     rating = db.Column(db.Integer, nullable=False)
-    release_year = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
+    release_year = db.Column(db.DateTime, nullable=False, default=datetime.now)
     librarian_id = db.Column(db.Integer, db.ForeignKey('librarian.id'), nullable=False)
     book_issues = db.relationship('BookIssue', backref='book', lazy=True)
-    genre_id = db.Column(db.Integer, db.ForeignKey('genre.id'), nullable=True)
+    genre_id = db.Column(db.Integer, db.ForeignKey('genre.id'), nullable=False)
 
     def __repr__(self):
         return f"Book('{self.title}', '{self.author}')"

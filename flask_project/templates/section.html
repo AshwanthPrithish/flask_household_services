@@ -1,16 +1,59 @@
 {% extends "layout.html" %} {% block content %}
 <h1>Section Details</h1>
 <div class="container">
-  <div>
-    <a class="btn btn-secondary btn-sm m-1" href="{{ url_for('update_section', section_id=section.id) }}">Update</a>
-    <button type="button" class="btn btn-danger btn-sm m-1" data-toggle="modal" data-target="#deleteModal">Delete</button>
-  </div>
+  {% if current_user.role == 'librarian' %}
+    <div>
+        <a class="btn btn-secondary btn-sm m-1" href="{{ url_for('update_section', section_id=section.id) }}">Update Section</a>
+        <button type="button" class="btn btn-danger btn-sm m-1" data-toggle="modal" data-target="#deleteModal">Delete Section</button>
+        <a class="btn btn-secondary btn-sm m-1" href="{{ url_for('add_book', section_id=section.id) }}">Add a Book to this section</a>
+    </div>
+  {% endif %}
   <b>Added by Librarian:</b> {{ section['librarian_username'] }}<br />
   <b>Date Created:</b> {{ section['date_created'].strftime("%d-%m-%Y") }}<br />
   <b>Section Name:</b> {{ section['name'] }}<br />
   <b>Description:</b> {{ section['description'] }}<br />
 </div>
 <br />
+{% if book_list|length > 0 %}
+<div class="container">
+    <h3>Books in {{ section['name'] }} Section</h3>
+    {% for book in book_list %}
+    <div class="container">
+        {% if current_user.role == 'librarian' %}
+    <div>
+        <a class="btn btn-secondary btn-sm m-1" href="{{ url_for('update_book', section_id=section.id, book_id=book.id) }}">Update This Book</a>
+        <button type="button" class="btn btn-danger btn-sm m-1" data-toggle="modal" data-target="#deleteBookModal">Delete This Book</button>
+    </div>
+    <!-- Delete Modal -->
+    <div class="modal fade" id="deleteBookModal" tabindex="-1" role="dialog" aria-labelledby="deleteBookLabel" aria-hidden="true">
+  <div class="modal-dialog" role="document">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="deleteBookModalLabel">Delete Book?</h5>
+        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+          <span aria-hidden="true">&times;</span>
+        </button>
+      </div>
+      
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+        <form action="{{ url_for('delete_book', section_id=section.id, book_id=book.id) }}" method="POST">
+           <input type="submit" class="btn btn-danger" value="Delete" />
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+  {% endif %}
+        <b>Title: </b>{{ book['title'] }}<br />
+        <b>Author: </b>{{ book['author'] }}<br />
+        <b>Content: </b>{{ book['content'] }}<br />
+        <b>Rating: </b>{{ book['rating'] }}<br />
+        <b>Released year: </b>{{ book['release_year'].strftime("%Y") }}<br />
+    </div><br/>
+    {% endfor %}
+</div>
+{% endif %}
 
 <div class="modal fade" id="deleteModal" tabindex="-1" role="dialog" aria-labelledby="deleteLabel" aria-hidden="true">
   <div class="modal-dialog" role="document">
@@ -31,4 +74,6 @@
     </div>
   </div>
 </div>
+
+
 {% endblock content %}
