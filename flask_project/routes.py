@@ -390,7 +390,9 @@ def duration_to_timedelta(st):
     matches = pattern.findall(st)
     result = [[int(match[0]), match[1]] for match in matches]
     for i, j in result:
-       if j == 'hours' or j == 'hour':
+       if j == 'minutes' or j == 'minute':
+          s += (i * 60)
+       elif j == 'hours' or j == 'hour':
           s += (i * 60 * 60)
        elif j == 'days' or j == 'day':
           s += (i * 60 * 60 * 24)
