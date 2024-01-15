@@ -1,12 +1,13 @@
 import secrets
 import os
+import re
 
-from datetime import datetime
+from datetime import datetime, timedelta
 from PIL import Image
 from flask import render_template,flash, redirect, url_for, request
 from flask_project import app, db, bcrypt
-from flask_project.forms import RegistrationForm, LoginForm, SPRegistrationForm, SPLoginForm, UpdateStudentAccount, UpdateSPAccount, SectionForm, BookAddForm
-from flask_project.models import Student, Librarian, Book, BookIssue, Genre
+from flask_project.forms import BookRequestForm, RegistrationForm, LoginForm, SPRegistrationForm, SPLoginForm, UpdateStudentAccount, UpdateSPAccount, SectionForm, BookAddForm
+from flask_project.models import Student, Librarian, Book, BookIssue, Genre, BookRequest
 from flask_login import login_user, current_user, logout_user, login_required
 
 with app.app_context():
@@ -30,7 +31,9 @@ def student_dash():
 @login_required
 def sp_dash():
   if current_user.role == "librarian":
-       return render_template("sp_dashboard.html", title="Librarian Dashboard")
+       book_issues = BookIssue.query.all()
+       book_issues = [[book_issue.issue_date, book_issue.return_date, Student.query.filter_by(id=book_issue.student_id).first().username, Book.query.filter_by(id=book_issue.book_id).first().title, Librarian.query.filter_by(id=book_issue.librarian_id).first().username, book_issue.id] for book_issue in book_issues]
+       return render_template("sp_dashboard.html", title="Librarian Dashboard", issued_books = book_issues)
   else:
        flash("Access Denied! You do not have permission to view this page.", "danger")
        return redirect(url_for("home"))
@@ -258,6 +261,10 @@ def delete_section(section_id):
   
   with app.app_context():
      section = Genre.query.get_or_404(section_id)
+     books = Book.query.filter_by(genre_id=section_id).all()
+     for book in books:
+        db.session.delete(book)
+        db.session.commit()
      db.session.delete(section)
      db.session.commit()
      flash('Section Deleted!', 'success')
@@ -325,3 +332,144 @@ def delete_book(section_id, book_id):
      db.session.commit()
      flash('Book Deleted!', 'success')
      return redirect(url_for('section', section_id=section_id))
+
+@app.route("/section/<int:section_id>/<int:book_id>/request_book", methods=['GET', 'POST'])
+@login_required
+def request_book(section_id, book_id):
+   if current_user.role != 'student':
+    flash(f"Access Denied! Only Students can request books", "danger")
+    return redirect(url_for("home"))
+   else:
+      form = BookRequestForm()
+      if form.validate_on_submit():
+        if len(BookIssue.query.filter_by(student_id=current_user.id).all()) == 5:
+         flash('You have already borrowed 5 books. Return a Book to request this!', 'danger')
+         return redirect(url_for('home'))
+        elif len(BookIssue.query.filter_by(student_id=current_user.id,book_id=book_id).all()) > 0:
+           flash('You have already borrowed this book!', 'danger')
+           return redirect(url_for('home'))
+        else:
+         request_duration = form.request_duration.data
+         student_id = current_user.id
+         with app.app_context():
+            br = BookRequest(request_duration=request_duration,student_id=student_id, book_id=book_id)
+            db.session.add(br)
+            db.session.commit()
+            flash('Book Requested Successfully!', 'success')
+            return redirect(url_for('home'))
+
+      return render_template('request_book.html', title="Request this Book", form=form, legend=f'Request {Genre.query.filter_by(id=section_id).first().name} Book - {Book.query.filter_by(id=book_id).first().title} by {Book.query.filter_by(id=book_id).first().author}')
+   
+@app.route('/student-requests')
+@login_required
+def student_requests():
+   if current_user.role == 'librarian':
+      flash(f"Access Denied! Only Students view requested books", "danger")
+      return redirect(url_for("home"))
+   else:
+      requested_books = BookRequest.query.filter_by(student_id=current_user.id).all()
+      details = [[Book.query.filter_by(id=x.book_id).first().title, BookRequest.query.filter_by(id=x.id).first().request_duration] for x in requested_books]
+   return render_template('student_requests.html', requested_books=details)
+
+@app.route('/pending-requests')
+@login_required
+def pending_requests():
+   if current_user.role != 'librarian':
+      flash(f"Access Denied! Only Librarian can view this page", "danger")
+      return redirect(url_for("home"))
+   else:
+      pending_requests = BookRequest.query.all()
+      details = [[x.id, Book.query.filter_by(id=x.book_id).first().title, Student.query.filter_by(id=x.student_id).first().username, x.request_duration] for x in pending_requests]
+   return render_template('pending_requests.html', requests=details)
+   
+  
+
+def duration_to_timedelta(st):
+    s = 0
+    pattern = re.compile(r'(\d+)\s*([a-zA-Z]+)')
+    matches = pattern.findall(st)
+    result = [[int(match[0]), match[1]] for match in matches]
+    for i, j in result:
+       if j == 'hours' or j == 'hour':
+          s += (i * 60 * 60)
+       elif j == 'days' or j == 'day':
+          s += (i * 60 * 60 * 24)
+       elif j == 'weeks' or j == 'week':
+          s += (i * 60 * 60 * 24 * 7)
+    return timedelta(seconds=s)
+
+@app.route("/pending-requests/<int:request_id>/issue", methods=['POST'])
+@login_required
+def issue_book(request_id):
+  if current_user.role != "librarian":
+    flash(f"Access Denied! You do not have permission to view this page.{current_user.role}", "danger")
+    return redirect(url_for("home"))
+  
+  with app.app_context():
+     book_request = BookRequest.query.get_or_404(request_id)
+     issue_date = datetime.now()
+     return_date = issue_date + duration_to_timedelta(book_request.request_duration)
+     student_id = book_request.student_id
+     book_id = book_request.book_id
+     librarian_id = current_user.id
+
+     bi = BookIssue(issue_date=issue_date,return_date=return_date,student_id=student_id,book_id=book_id,librarian_id=librarian_id)
+     db.session.add(bi)
+     db.session.commit()
+
+     db.session.delete(book_request)
+     db.session.commit()
+     flash('Book Issued to Student!', 'success')
+  return redirect(url_for('pending_requests'))
+
+@app.route("/pending-requests/<int:request_id>/disapprove", methods=['POST'])
+@login_required
+def disapprove_request(request_id):
+  if current_user.role != "librarian":
+    flash(f"Access Denied! You do not have permission to view this page.{current_user.role}", "danger")
+    return redirect(url_for("home"))
+  
+  with app.app_context():
+     book_request = BookRequest.query.get_or_404(request_id)
+     db.session.delete(book_request)
+     db.session.commit()
+     flash('Book Issued to Student!', 'success')
+  return redirect(url_for('pending_requests'))
+
+@app.route("/student-issued")
+@login_required
+def student_issued():
+  if current_user.role == "librarian":
+    flash(f"Access Denied! You do not have permission to view this page.{current_user.role}", "danger")
+    return redirect(url_for("home"))
+  else:
+     books = BookIssue.query.filter_by(student_id=current_user.id).all()
+     books = [Book.query.filter_by(id=book.book_id).all()+[book.return_date, Genre.query.filter_by(id=Book.query.filter_by(id=book.book_id).first().genre_id).first().name, book.id] for book in books]
+  return render_template('student_issued_books.html', issued_books=books)
+
+
+@app.route("/revoke-access/<int:issue_id>", methods=['POST'])
+@login_required
+def revoke_access(issue_id):
+   if current_user.role != "librarian":
+    flash(f"Access Denied! You do not have permission to view this page.{current_user.role}", "danger")
+    return redirect(url_for("home"))
+   else:
+      with app.app_context():
+         book_issue = BookIssue.query.filter_by(id=issue_id).first()
+         db.session.delete(book_issue)
+         db.session.commit()
+      return redirect(url_for('sp_dash'))
+   
+@app.route("/return-book/<int:issue_id>", methods=['POST'])
+@login_required
+def return_book(issue_id):
+   if current_user.role == "librarian":
+    flash(f"Access Denied! You do not have permission to view this page.{current_user.role}", "danger")
+    return redirect(url_for("home"))
+   else:
+      with app.app_context():
+         book_issue = BookIssue.query.filter_by(id=issue_id).first()
+         db.session.delete(book_issue)
+         db.session.commit()
+      return redirect(url_for('student_issued'))

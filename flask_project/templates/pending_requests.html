@@ -1,0 +1,58 @@
+{% extends "layout.html" %} {% block content %}
+<h1>Pending Requests</h1>
+{% for request in requests %}
+<div class="container">
+   <div>
+        <button type="button" class="btn btn-secondary btn-sm m-1" data-toggle="modal" data-target="#approve{{ request[0] }}RequestModal">Issue Book</button>
+        <button type="button" class="btn btn-danger btn-sm m-1" data-toggle="modal" data-target="#disapprove{{ request[0] }}RequestModal">Disapprove request</button>
+    </div>
+    
+    <div class="modal fade" id="approve{{ request[0] }}RequestModal" tabindex="-1" role="dialog" aria-labelledby="approveRequestLabel" aria-hidden="true">
+        <div class="modal-dialog" role="document">
+            <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="approveRequestModalLabel">Issue Book</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <p style="margin-left: 5px;">Issue book <b>{{ request[1] }}</b> to user <b>{{ request[2] }}</b>?</p>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+                <form action="{{ url_for('issue_book', request_id=request[0]) }}" method="POST">
+                <input type="submit" class="btn btn-danger" value="Issue" />
+                </form>
+            </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="disapprove{{ request[0] }}RequestModal" tabindex="-1" role="dialog" aria-labelledby="disapproveRequestLabel" aria-hidden="true">
+        <div class="modal-dialog" role="document">
+            <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="disapproveRequestModalLabel">Disapprove Request?</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <p style="margin-left: 5px;">Disapprove request for book <b>{{ request[1] }}</b> from user <b>{{ request[2] }}</b>?</p>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+                <form action="{{ url_for('disapprove_request', request_id=request[0]) }}" method="POST">
+                <input type="submit" class="btn btn-danger" value="Disapprove" />
+                </form>
+            </div>
+            </div>
+        </div>
+    </div>
+    
+   <b>Title: </b>{{ request[1] }}<br />
+   <b>Student Username: </b>{{ request[2] }}<br />
+   <b>Request Duration: </b>{{ request[3] }}<br />
+   <br/>
+   </div>
+{% endfor %}
+{% endblock content %}
+
+

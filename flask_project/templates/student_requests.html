@@ -1,0 +1,11 @@
+{% extends "layout.html" %} {% block content %}
+<h1>My Requests</h1>
+{% for request in requested_books %}
+   <div class="container">
+   <b>Title: </b>{{ request[0] }}<br />
+   <b>Request Duration: </b>{{ request[1] }}<br />
+   <b>Request Status: </b>Pending Approval<br />
+   <br/>
+   </div>
+{% endfor %}
+{% endblock content %}

@@ -1,6 +1,6 @@
 from flask_wtf import FlaskForm
 from flask_wtf.file import FileField, FileAllowed
-from wtforms import StringField, PasswordField, SubmitField, BooleanField, DateTimeField, TextAreaField, IntegerField
+from wtforms import StringField, PasswordField, SubmitField, BooleanField, DateTimeField, TextAreaField, IntegerField, TimeField
 from wtforms.validators import DataRequired, Length, Email, EqualTo, Regexp, ValidationError
 from flask_project.models import Student, Librarian
 from flask_login import current_user
@@ -108,7 +108,7 @@ class SectionForm(FlaskForm):
     title = StringField('Title', validators=[DataRequired()])
     date_created = DateTimeField('Date Added(Format dd-mm-yyyy)', format="%d-%m-%Y", validators=[DataRequired()])
     content = TextAreaField('Content', validators=[DataRequired()])
-    submit = SubmitField('Add Section')
+    submit = SubmitField()
     
 class BookAddForm(FlaskForm):
     title = StringField('Title', validators=[DataRequired()])
@@ -116,4 +116,8 @@ class BookAddForm(FlaskForm):
     content = TextAreaField('Content', validators=[DataRequired()])
     rating = IntegerField('Rating', validators=[DataRequired()])
     release_year = DateTimeField('Release Year(yyyy)', format="%Y", validators=[DataRequired()])
-    submit = SubmitField('Add Book')
+    submit = SubmitField()
+
+class BookRequestForm(FlaskForm):
+    request_duration = StringField('Period of Borrowing/days/weeks):(Eg: Enter "7 hours,6 days, 8 weeks" to borrow for 7 hours, 6 days, and 8 weeksng(hours)', validators=[DataRequired()])
+    submit = SubmitField()

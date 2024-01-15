@@ -22,14 +22,14 @@
         {% if current_user.role == 'librarian' %}
     <div>
         <a class="btn btn-secondary btn-sm m-1" href="{{ url_for('update_book', section_id=section.id, book_id=book.id) }}">Update This Book</a>
-        <button type="button" class="btn btn-danger btn-sm m-1" data-toggle="modal" data-target="#deleteBookModal">Delete This Book</button>
+        <button type="button" class="btn btn-danger btn-sm m-1" data-toggle="modal" data-target="#delete{{ book.id }}BookModal">Delete This Book</button>
     </div>
     <!-- Delete Modal -->
-    <div class="modal fade" id="deleteBookModal" tabindex="-1" role="dialog" aria-labelledby="deleteBookLabel" aria-hidden="true">
+    <div class="modal fade" id="delete{{ book.id }}BookModal" tabindex="-1" role="dialog" aria-labelledby="deleteBookLabel" aria-hidden="true">
   <div class="modal-dialog" role="document">
     <div class="modal-content">
       <div class="modal-header">
-        <h5 class="modal-title" id="deleteBookModalLabel">Delete Book?</h5>
+        <h5 class="modal-title" id="deleteBookModalLabel">Delete Book {{ book.title }}?</h5>
         <button type="button" class="close" data-dismiss="modal" aria-label="Close">
           <span aria-hidden="true">&times;</span>
         </button>
@@ -44,6 +44,10 @@
     </div>
   </div>
 </div>
+  {% else %}
+    <div>
+        <a class="btn btn-secondary btn-sm m-1" href="{{ url_for('request_book', section_id=section.id, book_id=book.id) }}">Request This Book</a>
+    </div>
   {% endif %}
         <b>Title: </b>{{ book['title'] }}<br />
         <b>Author: </b>{{ book['author'] }}<br />
@@ -64,7 +68,7 @@
           <span aria-hidden="true">&times;</span>
         </button>
       </div>
-      
+      <p>Warning! Deleting the Section will delete all its books!</p>
       <div class="modal-footer">
         <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
         <form action="{{ url_for('delete_section', section_id=section.id) }}" method="POST">

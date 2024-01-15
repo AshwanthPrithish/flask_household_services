@@ -41,8 +41,19 @@
                     </li>
                     <li>
                     <a class="nav-link" href="{{ url_for('new_section') }}">New Section</a>
+                    </li>
+                    <li>
+                      <a class="nav-link" href="{{ url_for('pending_requests') }}">Pending Requests</a>
                   {% endif %}
                 </li>
+                {% if current_user.role == 'student' %}
+                   <li class="nav-item">
+                      <a class="nav-link" href="{{ url_for('student_requests') }}">View Requested Books</a>
+                   </li>
+                   <li class="nav-item">
+                      <a class="nav-link" href="{{ url_for('student_issued') }}">View my Issued Books</a>
+                   </li>
+                {% endif %}
                 <li>
                   <a class="nav-link" href="{{ url_for('account') }}">Account</a>
                 </li>
