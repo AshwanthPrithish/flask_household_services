@@ -1,0 +1,13 @@
+{% extends "layout.html" %} {% block content %}
+<h1>View Student Feedbacks of our Books</h1>
+{% for data in f_list %}
+<div class="container">
+   <b>Book Title: </b>{{ data[0] }}<br />
+   <b>Student Username: </b>{{ data[1] }}<br />
+   <b>Feedback: </b>{{ data[2] }}<br />
+   <br/>
+   </div>
+{% endfor %}
+{% endblock content %}
+
+

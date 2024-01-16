@@ -83,3 +83,15 @@ class BookRequest(db.Model):
     request_duration = db.Column(db.String(100), nullable=False)
     book_id = db.Column(db.Integer, db.ForeignKey('book.id'), nullable=False)
     student_id = db.Column(db.Integer, db.ForeignKey('student.id'), nullable=False)
+
+    def __repr__(self):
+        return f"BookRequest('{self.id}', '{self.request_duration}')"
+
+class FeedBack(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    book_id = db.Column(db.Integer, db.ForeignKey('book.id'), nullable=False)
+    student_id = db.Column(db.Integer, db.ForeignKey('student.id'), nullable=False)
+    feedback = db.Column(db.String(200), nullable=False)
+
+    def __repr__(self):
+        return f"FeedBack('{self.id}')"

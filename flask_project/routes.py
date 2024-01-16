@@ -6,8 +6,8 @@ from datetime import datetime, timedelta
 from PIL import Image
 from flask import render_template,flash, redirect, url_for, request
 from flask_project import app, db, bcrypt
-from flask_project.forms import BookRequestForm, RegistrationForm, LoginForm, SPRegistrationForm, SPLoginForm, UpdateStudentAccount, UpdateSPAccount, SectionForm, BookAddForm
-from flask_project.models import Student, Librarian, Book, BookIssue, Genre, BookRequest
+from flask_project.forms import BookRequestForm, RegistrationForm, LoginForm, SPRegistrationForm, SPLoginForm, UpdateStudentAccount, UpdateSPAccount, SectionForm, BookAddForm, FeedBackForm
+from flask_project.models import Student, Librarian, Book, BookIssue, Genre, BookRequest, FeedBack
 from flask_login import login_user, current_user, logout_user, login_required
 
 with app.app_context():
@@ -40,6 +40,7 @@ def sp_dash():
 
 
 @app.route("/sections")
+@login_required
 def sections():
   with app.app_context():
      sections_ = Genre.query.all()
@@ -472,6 +473,41 @@ def return_book(issue_id):
    else:
       with app.app_context():
          book_issue = BookIssue.query.filter_by(id=issue_id).first()
-         db.session.delete(book_issue)
-         db.session.commit()
-      return redirect(url_for('student_issued'))
+         bid = book_issue.book_id
+         sid = book_issue.student_id
+        #  db.session.delete(book_issue)
+        #  db.session.commit()
+      return redirect(url_for('book_feedback', book_id=bid, student_id=sid))
+   
+
+@app.route('/book-feedback/<int:book_id>/<int:student_id>', methods=['GET', 'POST'])
+@login_required
+def book_feedback(book_id, student_id):
+   if current_user.role == "librarian" or current_user.id != student_id:
+    flash("Access Denied! You do not have permission to view this page.", "danger")
+    return redirect(url_for("home"))
+   else:
+      bname = Book.query.filter_by(id=book_id).first().title
+      sname = Student.query.filter_by(id=student_id).first().username
+
+      form = FeedBackForm()
+      if form.validate_on_submit():
+        feedback = form.feedback.data
+        if len(feedback) >= 200:
+           flash("Limit your feedback to less than or equal to 200 words.", "danger")
+           return redirect(url_for('book_feedback', book_id=book_id, student_id=student_id))
+        with app.app_context():
+            f = FeedBack(feedback=feedback,student_id=student_id, book_id=book_id)
+            db.session.add(f)
+            db.session.commit()
+            flash('Feedback Submitted Successfully!', 'success')
+            return redirect(url_for('home'))
+
+      return render_template('feedback.html', book_name=bname, student_name=sname, legend='Feedback Form', form=form)
+   
+@app.route("/feedbacks")
+def feedbacks():
+   feed_backs = FeedBack.query.all()
+   f = [[Book.query.filter_by(id=i.book_id).first().title, Student.query.filter_by(id=i.student_id).first().username, i.feedback] for i in feed_backs]
+   return render_template('view_feedbacks.html', f_list = f)
+   
