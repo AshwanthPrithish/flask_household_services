@@ -10,7 +10,15 @@
         <b>Title: </b>{{ book[0]['title'] }}<br />
         <b>Author: </b>{{ book[0]['author'] }}<br />
         <b>Section: </b>{{ book[2] }}<br />
-        <b>Content: </b>{{ book[0]['content'] }}<br />
+        {% if book[0].content %}
+        <b>Content: </b>
+        <div class="card" style="height: 300px; overflow-y: auto;">
+            <div class="card-body">
+                {{ book[0]['content'] }}
+            </div>
+        </div>
+        <br />
+        {% endif %}
         <b>Rating: </b>{{ book[0]['rating'] }}<br />
         <b>Released year: </b>{{ book[0]['release_year'].strftime("%Y") }}<br />
     </div><br/>

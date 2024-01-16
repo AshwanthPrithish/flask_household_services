@@ -41,16 +41,20 @@ def student_dash():
 @app.route("/search-results_section/<query>")
 @login_required
 def search_results_section(query):
-   sections = Genre.query.filter(func.lower(Genre.name) == query.lower()).all()
+   sections = Genre.query.filter(func.lower(Genre.name).ilike(f"%{query.lower()}%")).all()
    return render_template('search_results_section.html', sections=sections, title='Search')
 
 @app.route("/search-results_title/<query>")
 @login_required
 def search_results_title(query):
-   titles = Book.query.filter(func.lower(Book.title) == query.lower()).all()
-   titles = [[x,x.genre_id, Genre.query.filter_by(id=x.genre_id).first().name] for x in titles]
-   titles.sort(key = lambda x: x[0].rating, reverse=True)
-   return render_template('search_results_title.html', titles=titles, title='Search')
+   titles = Book.query.filter(func.lower(Book.title).ilike(f"%{query.lower()}%")).all()
+   books = [[{'title':book.title, 'author':book.author, 'content':book.content, 'rating':book.rating, 'release_year':book.release_year,'id':book.id},book.genre_id, Genre.query.filter_by(id=book.genre_id).first().name] for book in titles]
+   if current_user.role == 'student':
+           for book in books:
+              if len(BookIssue.query.filter_by(student_id=current_user.id, book_id=book[0].get('id')).all()) <= 0:
+                 del book[0]['content']
+   books.sort(key = lambda x: x[0].get('rating'), reverse=True)
+   return render_template('search_results_title.html', titles=books, title='Search')
 
 
 @app.route("/sp-dash")
@@ -159,6 +163,7 @@ def sp_login():
   return render_template("sp_login.html", title="Admin Login", form=form)
 
 @app.route("/logout")
+@login_required
 def logout():
   logout_user()
   return redirect(url_for('home'))
@@ -249,11 +254,18 @@ def new_section():
   return render_template('create_section.html', title="New Section", form=form, legend='New Section')
   
 @app.route("/section/<int:section_id>")
+@login_required
 def section(section_id):
   with app.app_context():
     section = Genre.query.get_or_404(section_id)
   with app.app_context():
         books = Book.query.filter_by(genre_id=section_id).all()
+        books = [{'title':book.title, 'author':book.author, 'content':book.content, 'rating':book.rating, 'release_year':book.release_year,'id':book.id} for book in books]
+        if current_user.role == 'student':
+           for book in books:
+              if len(BookIssue.query.filter_by(student_id=current_user.id, book_id=book.get('id')).all()) <= 0:
+                 del book['content']
+              
   return render_template('section.html', title=section.name, section=section, book_list=books)
 
 @app.route("/section/<int:section_id>/update", methods=['GET', 'POST'])
@@ -474,7 +486,7 @@ def student_issued():
   else:
      books = BookIssue.query.filter_by(student_id=current_user.id).all()
      books = [Book.query.filter_by(id=book.book_id).all()+[book.return_date, Genre.query.filter_by(id=Book.query.filter_by(id=book.book_id).first().genre_id).first().name, book.id] for book in books]
-  return render_template('student_issued_books.html', issued_books=books)
+  return render_template('student_issued_books.html', issued_books=books, title='Issued books')
 
 
 @app.route("/revoke-access/<int:issue_id>", methods=['POST'])
@@ -501,8 +513,8 @@ def return_book(issue_id):
          book_issue = BookIssue.query.filter_by(id=issue_id).first()
          bid = book_issue.book_id
          sid = book_issue.student_id
-        #  db.session.delete(book_issue)
-        #  db.session.commit()
+         db.session.delete(book_issue)
+         db.session.commit()
       return redirect(url_for('book_feedback', book_id=bid, student_id=sid))
    
 

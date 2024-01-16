@@ -8,7 +8,13 @@
    <b>Author: </b>{{ book[0].author }}<br />
    <b>Genre: </b>{{ book[2] }}<br />
    <b>Return date: </b>{{ book[1].strftime("%d-%m-%Y") }}<br />
-   <b>Content: </b>{{ book[0].content }}<br />
+   <b>Content: </b>
+        <div class="card"  style="height: 300px; overflow-y: auto;">
+            <div class="card-body">
+                {{ book[0]['content'] }}
+            </div>
+        </div>
+        <br />
    <b>Rating: </b>{{ book[0].rating }}<br />
    <b>Release Year: </b>{{ book[0].release_year.strftime("%Y")  }}<br />
    <br/>
