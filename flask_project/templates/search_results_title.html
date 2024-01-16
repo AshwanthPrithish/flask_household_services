@@ -1,0 +1,23 @@
+{% extends "layout.html" %} {% block content %}
+<h1>Search Results of Book title</h1>
+
+<div class="container">
+    {% for book in titles %}
+    <div class="container">
+        <div>
+            <a class="btn btn-secondary btn-sm m-1" href="{{ url_for('request_book', section_id=book[1], book_id=book[0].id) }}">Request This Book</a>
+        </div>
+        <b>Title: </b>{{ book[0]['title'] }}<br />
+        <b>Author: </b>{{ book[0]['author'] }}<br />
+        <b>Section: </b>{{ book[2] }}<br />
+        <b>Content: </b>{{ book[0]['content'] }}<br />
+        <b>Rating: </b>{{ book[0]['rating'] }}<br />
+        <b>Released year: </b>{{ book[0]['release_year'].strftime("%Y") }}<br />
+    </div><br/>
+    {% endfor %}
+</div>
+
+
+
+
+{% endblock content %}

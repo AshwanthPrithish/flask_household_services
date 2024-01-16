@@ -125,3 +125,11 @@ class BookRequestForm(FlaskForm):
 class FeedBackForm(FlaskForm):
     feedback = StringField('Feedback for Book', validators=[DataRequired()])
     submit = SubmitField()
+
+class SearchSectionForm(FlaskForm):
+    section = StringField('Enter the Section to search for:', validators=[DataRequired()])
+    submit = SubmitField()
+
+class SearchTitleForm(FlaskForm):
+    title = StringField('Enter the Book Title to search for:', validators=[DataRequired()])
+    submit = SubmitField()

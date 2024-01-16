@@ -6,9 +6,10 @@ from datetime import datetime, timedelta
 from PIL import Image
 from flask import render_template,flash, redirect, url_for, request
 from flask_project import app, db, bcrypt
-from flask_project.forms import BookRequestForm, RegistrationForm, LoginForm, SPRegistrationForm, SPLoginForm, UpdateStudentAccount, UpdateSPAccount, SectionForm, BookAddForm, FeedBackForm
+from flask_project.forms import BookRequestForm, RegistrationForm, LoginForm, SPRegistrationForm, SPLoginForm, UpdateStudentAccount, UpdateSPAccount, SectionForm, BookAddForm, FeedBackForm, SearchSectionForm, SearchTitleForm
 from flask_project.models import Student, Librarian, Book, BookIssue, Genre, BookRequest, FeedBack
 from flask_login import login_user, current_user, logout_user, login_required
+from sqlalchemy import func
 
 with app.app_context():
   db.create_all()
@@ -18,14 +19,39 @@ with app.app_context():
 def home():
   return render_template("home.html", title="Home")
 
-@app.route("/student-dash")
+@app.route("/student-dash", methods=['GET', 'POST'])
 @login_required
 def student_dash():
   if current_user.role == "student":
-       return render_template("student_dashboard.html", title="Student Dashboard")
+       form = SearchSectionForm()
+       if form.validate_on_submit():
+          section = form.section.data
+          flash(f'{section}', 'success')
+          return redirect(url_for('search_results_section', query=section))
+       form1 = SearchTitleForm()
+       if form1.validate_on_submit():
+          title = form1.title.data
+          flash(f'{title}', 'success')
+          return redirect(url_for('search_results_title', query=title))
+       return render_template("student_dashboard.html", title="Student Dashboard", form=form, form1=form1)
   else:
        flash("Access Denied! You do not have permission to view this page.", "danger")
        return redirect(url_for("home"))
+
+@app.route("/search-results_section/<query>")
+@login_required
+def search_results_section(query):
+   sections = Genre.query.filter(func.lower(Genre.name) == query.lower()).all()
+   return render_template('search_results_section.html', sections=sections, title='Search')
+
+@app.route("/search-results_title/<query>")
+@login_required
+def search_results_title(query):
+   titles = Book.query.filter(func.lower(Book.title) == query.lower()).all()
+   titles = [[x,x.genre_id, Genre.query.filter_by(id=x.genre_id).first().name] for x in titles]
+   titles.sort(key = lambda x: x[0].rating, reverse=True)
+   return render_template('search_results_title.html', titles=titles, title='Search')
+
 
 @app.route("/sp-dash")
 @login_required
