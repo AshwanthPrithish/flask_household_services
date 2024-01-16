@@ -57,13 +57,25 @@ def search_results_title(query):
    return render_template('search_results_title.html', titles=books, title='Search')
 
 
-@app.route("/sp-dash")
+@app.route("/sp-dash", methods=['GET', 'POST'])
 @login_required
 def sp_dash():
   if current_user.role == "librarian":
+       
+       form = SearchSectionForm()
+       if form.validate_on_submit():
+          section = form.section.data
+          flash(f'{section}', 'success')
+          return redirect(url_for('search_results_section', query=section))
+       form1 = SearchTitleForm()
+       if form1.validate_on_submit():
+          title = form1.title.data
+          flash(f'{title}', 'success')
+          return redirect(url_for('search_results_title', query=title))
+       
        book_issues = BookIssue.query.all()
        book_issues = [[book_issue.issue_date, book_issue.return_date, Student.query.filter_by(id=book_issue.student_id).first().username, Book.query.filter_by(id=book_issue.book_id).first().title, Librarian.query.filter_by(id=book_issue.librarian_id).first().username, book_issue.id] for book_issue in book_issues]
-       return render_template("sp_dashboard.html", title="Librarian Dashboard", issued_books = book_issues)
+       return render_template("sp_dashboard.html", title="Librarian Dashboard", issued_books = book_issues, form=form, form1=form1)
   else:
        flash("Access Denied! You do not have permission to view this page.", "danger")
        return redirect(url_for("home"))
