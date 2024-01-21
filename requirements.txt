@@ -4,3 +4,7 @@ wtforms
 
 pillow
 sqlalchemy
+
+flask_sqlalchemy
+flask_bcrypt
+flask_login
