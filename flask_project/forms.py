@@ -62,7 +62,7 @@ class SPLoginForm(FlaskForm):
 class UpdateStudentAccount(FlaskForm):
     username = StringField('Username', validators=[DataRequired(), Length(min=2, max=20)])
     email = StringField('Email', validators=[DataRequired(), Email()])
-    picture = FileField('Update Profile picture', validators=[FileAllowed(['jpg', 'jpeg', 'pngs'])])
+    picture = FileField('Update Profile picture', validators=[FileAllowed(['jpg', 'jpeg', 'png'])])
     submit = SubmitField("Update")
 
     def validate_username(self, username):
@@ -81,7 +81,7 @@ class UpdateSPAccount(FlaskForm):
     username = StringField('Username', validators=[DataRequired(), Length(min=2, max=20)])
     email = StringField('Email', validators=[DataRequired(), Email()])
     admin_id = StringField('Admin ID', validators=[DataRequired(), Length(min=2, max=20), Regexp("^\d{5,8}$")])
-    picture = FileField('Update Profile picture', validators=[FileAllowed(['jpg', 'jpeg', 'pngs'])])
+    picture = FileField('Update Profile picture', validators=[FileAllowed(['jpg', 'jpeg', 'png'])])
     submit = SubmitField("Update")
 
     def validate_username(self, username):

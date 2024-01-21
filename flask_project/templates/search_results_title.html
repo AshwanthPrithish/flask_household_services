@@ -4,7 +4,7 @@
 <div class="container">
     {% for book in titles %}
     <div class="container">
-        {% if current_user.role == 'student' %}
+        {% if current_user.role == 'student' and not book[0].content %}
         <div>
             <a class="btn btn-secondary btn-sm m-1" href="{{ url_for('request_book', section_id=book[1], book_id=book[0].id) }}">Request This Book</a>
         </div>

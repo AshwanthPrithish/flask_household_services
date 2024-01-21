@@ -45,9 +45,11 @@
   </div>
 </div>
   {% else %}
+  {% if not book.content %}
     <div>
         <a class="btn btn-secondary btn-sm m-1" href="{{ url_for('request_book', section_id=section.id, book_id=book.id) }}">Request This Book</a>
     </div>
+    {% endif %}
   {% endif %}
         <b>Title: </b>{{ book['title'] }}<br />
         <b>Author: </b>{{ book['author'] }}<br />
