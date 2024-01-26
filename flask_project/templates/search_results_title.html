@@ -14,8 +14,11 @@
         <b>Section: </b>{{ book[2] }}<br />
         {% if book[0].content %}
         <b>Content: </b>
-        <div class="card" style="height: 300px; overflow-y: auto;">
+        <div class="card"  style="height: 300px; overflow-y: auto;">
             <div class="card-body">
+                <center><b>{{ book[0].title }}</b></center>
+                <center>By - <em>{{ book[0].author }}</em></center>
+                <hr />
                 {{ book[0]['content'] }}
             </div>
         </div>

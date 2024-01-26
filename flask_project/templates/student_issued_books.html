@@ -3,6 +3,7 @@
 {% for book in issued_books %}
    <div class="container">
      <button type="button" class="btn btn-secondary btn-sm m-1" data-toggle="modal" data-target="#o{{ book[-1] }}one">Return Book</button><br/>
+     <button type="button" class="btn btn-secondary btn-sm m-1" data-toggle="modal" data-target="#t{{ book[-1] }}two">Download pdf</button><br/>
 
    <b>Title: </b>{{ book[0].title }}<br />
    <b>Author: </b>{{ book[0].author }}<br />
@@ -11,6 +12,9 @@
    <b>Content: </b>
         <div class="card"  style="height: 300px; overflow-y: auto;">
             <div class="card-body">
+                <center><b>{{ book[0].title }}</b></center>
+                <center>By - <em>{{ book[0].author }}</em></center>
+                <hr />
                 {{ book[0]['content'] }}
             </div>
         </div>
@@ -39,5 +43,28 @@
             </div>
         </div>
     </div>
+
+     <div class="modal fade" id="t{{ book[-1] }}two" tabindex="-1" role="dialog" aria-labelledby="one" aria-hidden="true">
+        <div class="modal-dialog" role="document">
+            <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="oneTitle">Download PDF?</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <p style="margin-left: 5px;">Download <b>{{ book[0].title }}</b> from library? Proceed only after payment.</p>
+            <p>Note: Only <b><em>English, Tamil, Hindi, Telugu, and, Malayalam</em></b> language fonts are available for pdf.</p>
+            <br />
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+                <button type="button" class="btn btn-secondary" data-dismiss="modal"><a class="article-title" href="{{ url_for('download_book', book_id=book[0].id) }}">Download</a></button>
+                </div>
+            </div>
+            </div>
+        </div>
+    </div>
+
+    
 {% endfor %}
 {% endblock content %}

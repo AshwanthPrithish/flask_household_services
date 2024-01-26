@@ -1,10 +1,12 @@
 import secrets
 import os
 import re
+import pdfkit
+import subprocess
 
 from datetime import datetime, timedelta
 from PIL import Image
-from flask import render_template,flash, redirect, url_for, request
+from flask import render_template,flash, redirect, url_for, request, make_response, Response
 from flask_project import app, db, bcrypt
 from flask_project.forms import BookRequestForm, RegistrationForm, LoginForm, SPRegistrationForm, SPLoginForm, UpdateStudentAccount, UpdateSPAccount, SectionForm, BookAddForm, FeedBackForm, SearchSectionForm, SearchTitleForm
 from flask_project.models import Student, Librarian, Book, BookIssue, Genre, BookRequest, FeedBack
@@ -560,4 +562,33 @@ def feedbacks():
    feed_backs = FeedBack.query.all()
    f = [[Book.query.filter_by(id=i.book_id).first().title, Student.query.filter_by(id=i.student_id).first().username, i.feedback] for i in feed_backs]
    return render_template('view_feedbacks.html', f_list = f)
+   
+
+
+
+@app.route("/download/<int:book_id>")   
+@login_required
+def download_book(book_id):
+   if current_user.role == "librarian" or len(BookIssue.query.filter_by(book_id=book_id,student_id=current_user.id).all()) <= 0:
+    flash("Access Denied! You do not have permission to view this page.", "danger")
+    return redirect(url_for("home"))
+   else:
+      lang_dict = {'hindi': 'Noto Serif Devanagari', 'tamil': 'Noto Sans Tamil', 'telugu': 'Noto Sans Telugu', 'malayalam': 'Noto Sans Malayalam'}
+      book=Book.query.filter_by(id=book_id).first()
+      lang = book.lang
+      rendered = render_template('download_content.html', book=book, font_lang=lang_dict[lang])
+      
+      config = pdfkit.configuration(wkhtmltopdf=r"C:\Program Files\wkhtmltopdf\bin\wkhtmltopdf.exe")
+
+
+      pdf = pdfkit.from_string(rendered, configuration=config, options = {
+    'encoding': 'UTF-8',
+    'no-images': None,
+    'quiet': ''
+})
+      response = make_response(pdf)
+      response.headers['Content-Type'] = 'application/pdf'
+      response.headers['Content-Disposition'] = 'inline;filename=output.pdf'
+
+      return response
    

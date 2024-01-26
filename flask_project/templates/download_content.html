@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta http-equiv="Content-type" content="text/html; charset=utf-8" />
+    <title>Download - Library Management System</title>
+    <style>
+  @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+Malayalam:wght@200&family=Noto+Sans+Tamil:wght@200&family=Noto+Sans+Telugu:wght@200&family=Noto+Serif+Devanagari:wght@200&display=swap');
+  body {
+    font-family: '{{ font_lang }}', sans-serif;
+    font-size: large;
+    font-weight: 100;
+  } 
+  
+
+</style>
+
+
+
+  </head>
+<body>
+    <div class="card">
+        <div class="card-body">
+            <center><b>{{ book.title }}</b></center>
+            <center>By - <em>{{ book.author }}</em></center>
+            <hr />
+            <br />
+            <div>{{ book.content }}</div>
+        </div>
+    </div>
+</body>
+</html>
+
+    
