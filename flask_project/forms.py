@@ -113,6 +113,7 @@ class SectionForm(FlaskForm):
 class BookAddForm(FlaskForm):
     title = StringField('Title', validators=[DataRequired()])
     author = StringField('Author', validators=[DataRequired()])
+    lang = StringField('Language', validators=[DataRequired()])
     content = TextAreaField('Content', validators=[DataRequired()])
     rating = IntegerField('Rating', validators=[DataRequired()])
     release_year = DateTimeField('Release Year(yyyy)', format="%Y", validators=[DataRequired()])

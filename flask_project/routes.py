@@ -50,7 +50,7 @@ def search_results_section(query):
 @login_required
 def search_results_title(query):
    titles = Book.query.filter(func.lower(Book.title).ilike(f"%{query.lower()}%")).all()
-   books = [[{'title':book.title, 'author':book.author, 'content':book.content, 'rating':book.rating, 'release_year':book.release_year,'id':book.id},book.genre_id, Genre.query.filter_by(id=book.genre_id).first().name] for book in titles]
+   books = [[{'title':book.title, 'author':book.author,'lang': book.lang ,'content':book.content, 'rating':book.rating, 'release_year':book.release_year,'id':book.id},book.genre_id, Genre.query.filter_by(id=book.genre_id).first().name] for book in titles]
    if current_user.role == 'student':
            for book in books:
               if len(BookIssue.query.filter_by(student_id=current_user.id, book_id=book[0].get('id')).all()) <= 0:
@@ -274,7 +274,7 @@ def section(section_id):
     section = Genre.query.get_or_404(section_id)
   with app.app_context():
         books = Book.query.filter_by(genre_id=section_id).all()
-        books = [{'title':book.title, 'author':book.author, 'content':book.content, 'rating':book.rating, 'release_year':book.release_year,'id':book.id} for book in books]
+        books = [{'title':book.title, 'author':book.author, 'lang': book.lang,'content':book.content, 'rating':book.rating, 'release_year':book.release_year,'id':book.id} for book in books]
         if current_user.role == 'student':
            for book in books:
               if len(BookIssue.query.filter_by(student_id=current_user.id, book_id=book.get('id')).all()) <= 0:
@@ -316,6 +316,10 @@ def delete_section(section_id):
      section = Genre.query.get_or_404(section_id)
      books = Book.query.filter_by(genre_id=section_id).all()
      for book in books:
+        feedbacks = FeedBack.query.filter_by(book_id=book.id).all()
+        for feedback in feedbacks:
+           db.session.delete(feedback)
+           db.session.commit()
         db.session.delete(book)
         db.session.commit()
      db.session.delete(section)
@@ -332,7 +336,7 @@ def add_book(section_id):
   
   form = BookAddForm()
   if form.validate_on_submit():
-     book = Book(title=form.title.data,author=form.author.data,content=form.content.data,rating=form.rating.data,release_year=form.release_year.data,librarian_id=current_user.id,genre_id=section_id)
+     book = Book(title=form.title.data,author=form.author.data,content=form.content.data, lang=form.lang.data, rating=form.rating.data,release_year=form.release_year.data,librarian_id=current_user.id,genre_id=section_id)
      with app.app_context():
         db.session.add(book)
         db.session.commit()
@@ -356,6 +360,7 @@ def update_book(section_id, book_id):
         book.title=form.title.data
         book.author=form.author.data
         book.content=form.content.data
+        book.lang=form.lang.data
         book.rating=form.rating.data
         book.release_year=form.release_year.data
         db.session.commit()
@@ -365,6 +370,7 @@ def update_book(section_id, book_id):
   elif request.method == 'GET':
     form.title.data = book.title
     form.author.data = book.author
+    form.lang.data = book.lang
     form.content.data = book.content
     form.rating.data = book.rating
     form.release_year.data = book.release_year
@@ -381,6 +387,12 @@ def delete_book(section_id, book_id):
   
   with app.app_context():
      book = Book.query.get_or_404(book_id)
+     
+     feedbacks = FeedBack.query.filter_by(book_id=book_id).all()
+     for feedback in feedbacks:
+           db.session.delete(feedback)
+           db.session.commit()
+     
      db.session.delete(book)
      db.session.commit()
      flash('Book Deleted!', 'success')
@@ -561,7 +573,7 @@ def book_feedback(book_id, student_id):
 def feedbacks():
    feed_backs = FeedBack.query.all()
    f = [[Book.query.filter_by(id=i.book_id).first().title, Student.query.filter_by(id=i.student_id).first().username, i.feedback] for i in feed_backs]
-   return render_template('view_feedbacks.html', f_list = f)
+   return render_template('view_feedbacks.html', f_list = f, title="Feedbacks")
    
 
 
@@ -575,7 +587,10 @@ def download_book(book_id):
    else:
       lang_dict = {'hindi': 'Noto Serif Devanagari', 'tamil': 'Noto Sans Tamil', 'telugu': 'Noto Sans Telugu', 'malayalam': 'Noto Sans Malayalam'}
       book=Book.query.filter_by(id=book_id).first()
-      lang = book.lang
+      lang = book.lang.lower()
+      if lang not in lang_dict.keys():
+         flash(f'Cannot download {lang} language book!', 'danger')
+         return redirect(url_for("home"))
       rendered = render_template('download_content.html', book=book, font_lang=lang_dict[lang])
       
       config = pdfkit.configuration(wkhtmltopdf=r"C:\Program Files\wkhtmltopdf\bin\wkhtmltopdf.exe")
