@@ -55,12 +55,12 @@
                 </button>
             </div>
             <p style="margin-left: 5px;">Download <b>{{ book[0].title }}</b> from library? Proceed only after payment.</p>
-            <p>Note: Only <b><em>English, Tamil, Hindi, Telugu, and, Malayalam</em></b> language fonts are available for pdf.</p>
+            <p>Note: Only <b><em>English, Tamil, Hindi, Telugu, Kannada, and, Malayalam</em></b> language fonts are available for pdf.</p>
             <br />
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
-                <button type="button" class="btn btn-secondary" data-dismiss="modal"><a class="article-title" href="{{ url_for('download_book', book_id=book[0].id) }}">Download</a></button>
-                </div>
+                <a href="{{ url_for('download_book', book_id=book[0].id) }}" class="btn btn-secondary" role="button" target="_blank">Download</a>
+            </div>
             </div>
             </div>
         </div>

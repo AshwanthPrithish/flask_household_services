@@ -2,11 +2,10 @@ import secrets
 import os
 import re
 import pdfkit
-import subprocess
 
 from datetime import datetime, timedelta
 from PIL import Image
-from flask import render_template,flash, redirect, url_for, request, make_response, Response
+from flask import render_template,flash, redirect, url_for, request, make_response
 from flask_project import app, db, bcrypt
 from flask_project.forms import BookRequestForm, RegistrationForm, LoginForm, SPRegistrationForm, SPLoginForm, UpdateStudentAccount, UpdateSPAccount, SectionForm, BookAddForm, FeedBackForm, SearchSectionForm, SearchTitleForm
 from flask_project.models import Student, Librarian, Book, BookIssue, Genre, BookRequest, FeedBack
@@ -28,12 +27,10 @@ def student_dash():
        form = SearchSectionForm()
        if form.validate_on_submit():
           section = form.section.data
-          flash(f'{section}', 'success')
           return redirect(url_for('search_results_section', query=section))
        form1 = SearchTitleForm()
        if form1.validate_on_submit():
           title = form1.title.data
-          flash(f'{title}', 'success')
           return redirect(url_for('search_results_title', query=title))
        return render_template("student_dashboard.html", title="Student Dashboard", form=form, form1=form1)
   else:
@@ -44,6 +41,9 @@ def student_dash():
 @login_required
 def search_results_section(query):
    sections = Genre.query.filter(func.lower(Genre.name).ilike(f"%{query.lower()}%")).all()
+   if len(sections) <= 0:
+      flash(f'No sections found for the query {query}!', 'danger')
+      return redirect(url_for('student_dash'))
    return render_template('search_results_section.html', sections=sections, title='Search')
 
 @app.route("/search-results_title/<query>")
@@ -56,6 +56,9 @@ def search_results_title(query):
               if len(BookIssue.query.filter_by(student_id=current_user.id, book_id=book[0].get('id')).all()) <= 0:
                  del book[0]['content']
    books.sort(key = lambda x: x[0].get('rating'), reverse=True)
+   if len(books) <= 0:
+      flash(f'No books found for the query {query}!', 'danger')
+      return redirect(url_for('student_dash'))
    return render_template('search_results_title.html', titles=books, title='Search')
 
 
@@ -88,7 +91,7 @@ def sp_dash():
 def sections():
   with app.app_context():
      sections_ = Genre.query.all()
-  return render_template("sections.html", section_list=sections_, title="Book List")
+  return render_template("sections.html", section_list=sections_, title="Sections")
 
 @app.route("/about-us")
 def about_us():
@@ -413,6 +416,9 @@ def request_book(section_id, book_id):
         elif len(BookIssue.query.filter_by(student_id=current_user.id,book_id=book_id).all()) > 0:
            flash('You have already borrowed this book!', 'danger')
            return redirect(url_for('home'))
+        elif len(BookRequest.query.filter_by(student_id=current_user.id,book_id=book_id).all()) > 0:
+           flash('You have already requested this book! Wait for admin approval of previous request.', 'danger')
+           return redirect(url_for('home'))
         else:
          request_duration = form.request_duration.data
          student_id = current_user.id
@@ -434,7 +440,7 @@ def student_requests():
    else:
       requested_books = BookRequest.query.filter_by(student_id=current_user.id).all()
       details = [[Book.query.filter_by(id=x.book_id).first().title, BookRequest.query.filter_by(id=x.id).first().request_duration] for x in requested_books]
-   return render_template('student_requests.html', requested_books=details)
+   return render_template('student_requests.html', requested_books=details, title='Requests')
 
 @app.route('/pending-requests')
 @login_required
@@ -445,7 +451,7 @@ def pending_requests():
    else:
       pending_requests = BookRequest.query.all()
       details = [[x.id, Book.query.filter_by(id=x.book_id).first().title, Student.query.filter_by(id=x.student_id).first().username, x.request_duration] for x in pending_requests]
-   return render_template('pending_requests.html', requests=details)
+   return render_template('pending_requests.html', requests=details, title="Pending Requests")
    
   
 
@@ -500,7 +506,7 @@ def disapprove_request(request_id):
      book_request = BookRequest.query.get_or_404(request_id)
      db.session.delete(book_request)
      db.session.commit()
-     flash('Book Issued to Student!', 'success')
+     flash('Book Request disapproved to Student!', 'danger')
   return redirect(url_for('pending_requests'))
 
 @app.route("/student-issued")
@@ -526,6 +532,7 @@ def revoke_access(issue_id):
          book_issue = BookIssue.query.filter_by(id=issue_id).first()
          db.session.delete(book_issue)
          db.session.commit()
+      flash(f"Access revoked", "danger")   
       return redirect(url_for('sp_dash'))
    
 @app.route("/return-book/<int:issue_id>", methods=['POST'])
@@ -567,15 +574,13 @@ def book_feedback(book_id, student_id):
             flash('Feedback Submitted Successfully!', 'success')
             return redirect(url_for('home'))
 
-      return render_template('feedback.html', book_name=bname, student_name=sname, legend='Feedback Form', form=form)
+      return render_template('feedback.html', book_name=bname, student_name=sname, legend='Feedback Form', form=form, title="Book Feedback")
    
 @app.route("/feedbacks")
 def feedbacks():
    feed_backs = FeedBack.query.all()
    f = [[Book.query.filter_by(id=i.book_id).first().title, Student.query.filter_by(id=i.student_id).first().username, i.feedback] for i in feed_backs]
    return render_template('view_feedbacks.html', f_list = f, title="Feedbacks")
-   
-
 
 
 @app.route("/download/<int:book_id>")   
@@ -585,22 +590,19 @@ def download_book(book_id):
     flash("Access Denied! You do not have permission to view this page.", "danger")
     return redirect(url_for("home"))
    else:
-      lang_dict = {'hindi': 'Noto Serif Devanagari', 'tamil': 'Noto Sans Tamil', 'telugu': 'Noto Sans Telugu', 'malayalam': 'Noto Sans Malayalam'}
+      lang_dict = {'hindi': 'Noto Sans Devanagari', 'tamil': 'Noto Serif Tamil', 'telugu': 'Noto Sans Telugu', 'malayalam': 'Noto Sans Malayalam', 'kannada': 'Noto Sans Kannada'}
       book=Book.query.filter_by(id=book_id).first()
       lang = book.lang.lower()
+
       if lang not in lang_dict.keys():
          flash(f'Cannot download {lang} language book!', 'danger')
          return redirect(url_for("home"))
+      
       rendered = render_template('download_content.html', book=book, font_lang=lang_dict[lang])
       
       config = pdfkit.configuration(wkhtmltopdf=r"C:\Program Files\wkhtmltopdf\bin\wkhtmltopdf.exe")
+      pdf = pdfkit.from_string(rendered, configuration=config)
 
-
-      pdf = pdfkit.from_string(rendered, configuration=config, options = {
-    'encoding': 'UTF-8',
-    'no-images': None,
-    'quiet': ''
-})
       response = make_response(pdf)
       response.headers['Content-Type'] = 'application/pdf'
       response.headers['Content-Disposition'] = 'inline;filename=output.pdf'

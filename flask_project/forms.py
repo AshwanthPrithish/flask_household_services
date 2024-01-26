@@ -2,7 +2,7 @@ from flask_wtf import FlaskForm
 from flask_wtf.file import FileField, FileAllowed
 from wtforms import StringField, PasswordField, SubmitField, BooleanField, DateTimeField, TextAreaField, IntegerField, TimeField
 from wtforms.validators import DataRequired, Length, Email, EqualTo, Regexp, ValidationError
-from flask_project.models import Student, Librarian
+from flask_project.models import Student, Librarian, Genre, Book
 from flask_login import current_user
 
 class RegistrationForm(FlaskForm):
@@ -109,6 +109,11 @@ class SectionForm(FlaskForm):
     date_created = DateTimeField('Date Added(Format dd-mm-yyyy)', format="%d-%m-%Y", validators=[DataRequired()])
     content = TextAreaField('Content', validators=[DataRequired()])
     submit = SubmitField()
+
+    def validate_title(self, title):
+        section = Genre.query.filter_by(name=title.data).first()
+        if section:
+            raise ValidationError('That Section already exists. Please choose a new one.')
     
 class BookAddForm(FlaskForm):
     title = StringField('Title', validators=[DataRequired()])
@@ -118,6 +123,11 @@ class BookAddForm(FlaskForm):
     rating = IntegerField('Rating', validators=[DataRequired()])
     release_year = DateTimeField('Release Year(yyyy)', format="%Y", validators=[DataRequired()])
     submit = SubmitField()
+
+    def validate_title(self, title):
+        title = Book.query.filter_by(title=title.data).first()
+        if title:
+            raise ValidationError('That Book already exists. Please choose a new one.')
 
 class BookRequestForm(FlaskForm):
     request_duration = StringField('Period of Borrowing/days/weeks):(Eg: Enter "7 hours,6 days, 8 weeks" to borrow for 7 hours, 6 days, and 8 weeks', validators=[DataRequired()])

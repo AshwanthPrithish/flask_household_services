@@ -4,13 +4,11 @@ from flask_login import UserMixin
 
 @login_manager.user_loader
 def load_user(user_id):
-    # Assuming that the user_id is the primary key of your User model
     user = None
     
     if (int(user_id) >= 10000):
         user = Librarian.query.filter_by(id=int(user_id)).first()
     else:
-        # Try to load the user as a Student
         user = Student.query.filter_by(id=int(user_id)).first()
     
     return user
