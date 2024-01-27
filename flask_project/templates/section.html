@@ -85,7 +85,7 @@
             <br />
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
-                <button type="button" class="btn btn-secondary" data-dismiss="modal"><a class="article-title" href="{{ url_for('download_book', book_id=book.id) }}">Download</a></button>
+                <a class="btn btn-secondary" role="button" href="{{ url_for('download_book', book_id=book.id) }}" target="_blank">Download</a>
                 </div>
             </div>
             </div>
