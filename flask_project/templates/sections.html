@@ -1,11 +1,11 @@
 {% extends "layout.html" %} {% block content %}
 <h1>List of Available Sections</h1>
-{% for section in section_list|sort(attribute='date_created')|reverse %}
+{% for section in section_list|sort(attribute='0.date_created')|reverse %}
 <div class="container">
-  <b>Section Name:</b> <a class="article-title" href="{{ url_for('section', section_id=section.id) }}">{{ section['name'] }}</a><br />
-  <b>Date Created:</b> {{ section['date_created'].strftime("%d-%m-%Y") }}<br />
-  <b>Description:</b> {{ section['description'] }}<br />
-  <b>Added by Librarian:</b> {{ section['librarian_username'] }}<br />
+  <b>Section Name:</b> <a class="article-title" href="{{ url_for('section', section_id=section[0].id) }}">{{ section[0]['name'] }}</a><br />
+  <b>Date Created:</b> {{ section[0]['date_created'].strftime("%d-%m-%Y") }}<br />
+  <b>Description:</b> {{ section[0]['description'] }}<br />
+  <b>Added by Librarian:</b> {{ section[1] }}<br />
 </div>
 <br />
 {% endfor %} {% endblock content %}

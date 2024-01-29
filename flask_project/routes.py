@@ -41,10 +41,11 @@ def student_dash():
        flash("Access Denied! You do not have permission to view this page.", "danger")
        return redirect(url_for("home"))
 
-@app.route("/search-results_section/<query>")
+@app.route("/search-results-section/<query>")
 @login_required
 def search_results_section(query):
    sections = Genre.query.filter(func.lower(Genre.name).ilike(f"%{query.lower()}%")).all()
+   sections = [[i,Librarian.query.filter_by(id=i.librarian_id).first().username] for i in sections]
    if len(sections) <= 0:
       flash(f'No sections found for the query {query}!', 'danger')
       return redirect(url_for('student_dash'))
@@ -115,6 +116,7 @@ def sp_dash():
 def sections():
   with app.app_context():
      sections_ = Genre.query.all()
+     sections_ = [[i, Librarian.query.filter_by(id=i.librarian_id).first().username] for i in sections_]
   return render_template("sections.html", section_list=sections_, title="Sections")
 
 @app.route("/about-us")
@@ -283,10 +285,13 @@ def new_section():
   form = SectionForm()
   if form.validate_on_submit():
       if form.date_created.data == '':
-        section = Genre(name=form.title.data, description=form.content.data, librarian_username=current_user.username)
+        section = Genre(name=form.title.data, description=form.content.data, librarian_id=current_user.id)
       else:
+        if len(Genre.query.filter(func.lower(Genre.name).ilike(f"%{form.title.data.lower()}%")).all()) > 0:
+           flash('Section with that name already exists!', 'danger')
+           return redirect(url_for('new_section'))
         d = form.date_created.data
-        section = Genre(name=form.title.data, description=form.content.data, date_created=d, librarian_username=current_user.username)
+        section = Genre(name=form.title.data, description=form.content.data, date_created=d, librarian_id=current_user.id)
       with app.app_context():
          db.session.add(section)
          db.session.commit()
@@ -299,6 +304,7 @@ def new_section():
 def section(section_id):
   with app.app_context():
     section = Genre.query.get_or_404(section_id)
+    librarian_username = Librarian.query.filter_by(id=section.librarian_id).first().username
   with app.app_context():
         books = Book.query.filter_by(genre_id=section_id).all()
         books = [{'title':book.title, 'author':book.author, 'lang': book.lang,'content':book.content, 'rating':book.rating, 'release_year':book.release_year,'id':book.id} for book in books]
@@ -307,7 +313,7 @@ def section(section_id):
               if len(BookIssue.query.filter_by(student_id=current_user.id, book_id=book.get('id')).all()) <= 0:
                  del book['content']
               
-  return render_template('section.html', title=section.name, section=section, book_list=books)
+  return render_template('section.html', title=section.name, section=section, book_list=books, librarian_username= librarian_username)
 
 @app.route("/section/<int:section_id>/update", methods=['GET', 'POST'])
 @login_required
@@ -319,10 +325,13 @@ def update_section(section_id):
   section = Genre.query.get_or_404(section_id)
   form = SectionForm()
   if form.validate_on_submit():
+     if section.name.lower() != form.title.data.lower() and len(Genre.query.filter(func.lower(Genre.name).ilike(f"%{form.title.data.lower()}%")).all()) > 0:
+           flash('Section with that name already exists!', 'danger')
+           return redirect(url_for('update_section', section_id=section_id))
      section.name = form.title.data
      section.description = form.content.data
      section.date_created = form.date_created.data
-     section.librarian_username = current_user.username
+     section.librarian_id = current_user.id
      db.session.commit()
      flash(f'Updated the Section successfully', 'success')
      return redirect(url_for('section', section_id=section.id))
@@ -363,6 +372,9 @@ def add_book(section_id):
   
   form = BookAddForm()
   if form.validate_on_submit():
+     if len(Book.query.filter(func.lower(Book.title).ilike(f"%{form.title.data.lower()}%")).all()) > 0:
+           flash('Book with that name already exists!', 'danger')
+           return redirect(url_for('add_book', section_id=section_id))
      book = Book(title=form.title.data,author=form.author.data,content=form.content.data, lang=form.lang.data, rating=form.rating.data,release_year=form.release_year.data,librarian_id=current_user.id,genre_id=section_id)
      with app.app_context():
         db.session.add(book)
@@ -383,7 +395,9 @@ def update_book(section_id, book_id):
   book = Book.query.get_or_404(book_id)
   form = BookAddForm()
   if form.validate_on_submit():
-     
+        if book.title.lower() != form.title.data.lower() and len(Book.query.filter(func.lower(Book.title).ilike(f"%{form.title.data.lower()}%")).all()) > 0:
+           flash('Book with that title already exists!', 'danger')
+           return redirect(url_for('update_book', section_id=section_id,book_id=book_id))
         book.title=form.title.data
         book.author=form.author.data
         book.content=form.content.data

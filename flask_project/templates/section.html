@@ -8,7 +8,7 @@
         <a class="btn btn-secondary btn-sm m-1" href="{{ url_for('add_book', section_id=section.id) }}">Add a Book to this section</a>
     </div>
   {% endif %}
-  <b>Added by Librarian:</b> {{ section['librarian_username'] }}<br />
+  <b>Added by Librarian:</b> {{ librarian_username }}<br />
   <b>Date Created:</b> {{ section['date_created'].strftime("%d-%m-%Y") }}<br />
   <b>Section Name:</b> {{ section['name'] }}<br />
   <b>Description:</b> {{ section['description'] }}<br />

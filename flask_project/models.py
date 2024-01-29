@@ -46,7 +46,7 @@ class Genre(db.Model):
     date_created = db.Column(db.DateTime, default=datetime.now)
     description = db.Column(db.String(100), nullable=False, default="Description yet to be added.")
     books = db.relationship('Book', backref='genre_of_book', lazy=True)
-    librarian_username = db.Column(db.String(20), db.ForeignKey('librarian.username'), nullable=False)
+    librarian_id = db.Column(db.Integer, db.ForeignKey('librarian.id'), nullable=False)
 
     def __repr__(self):
         return f"Genre('{self.name}', {self.books})"
@@ -69,7 +69,7 @@ class Book(db.Model):
 class BookIssue(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     issue_date = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
-    return_date = db.Column(db.DateTime, nullable=True)
+    return_date = db.Column(db.DateTime, nullable=False)
     student_id = db.Column(db.Integer, db.ForeignKey('student.id'), nullable=False)
     book_id = db.Column(db.Integer, db.ForeignKey('book.id'), nullable=False)
     librarian_id = db.Column(db.Integer, db.ForeignKey('librarian.id'), nullable=False)
