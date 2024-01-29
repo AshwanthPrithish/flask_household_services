@@ -144,3 +144,7 @@ class SearchSectionForm(FlaskForm):
 class SearchTitleForm(FlaskForm):
     title = StringField('Enter the Book Title to search for:', validators=[DataRequired()])
     submit = SubmitField()
+
+class SearchAuthorForm(FlaskForm):
+    author = StringField('Enter the Author name to search for:', validators=[DataRequired()])
+    submit = SubmitField()

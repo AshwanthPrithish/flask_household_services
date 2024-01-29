@@ -1,0 +1,38 @@
+{% extends "layout.html" %} {% block content %}
+<h1>Search Results of Book Author</h1>
+
+<div class="container">
+    {% for book in titles %}
+    <div class="container">
+        {% if current_user.role == 'student' and not book[0].content %}
+        <div>
+            <a class="btn btn-secondary btn-sm m-1" href="{{ url_for('request_book', section_id=book[1], book_id=book[0].id) }}">Request This Book</a>
+        </div>
+        {% endif %}
+        <b>Title: </b>{{ book[0]['title'] }}<br />
+        <b>Author: </b>{{ book[0]['author'] }}<br />
+        <b>Language: </b>{{ book[0]['lang'] }}<br />
+        <b>Section: </b>{{ book[2] }}<br />
+        {% if book[0].content %}
+        <b>Content: </b>
+        <div class="card"  style="height: 300px; overflow-y: auto;">
+            <div class="card-body">
+                <center><b>{{ book[0].title }}</b></center>
+                <center>By - <em>{{ book[0].author }}</em></center>
+                <hr />
+                {{ book[0]['content'] }}
+            </div>
+        </div>
+        <br />
+        {% endif %}
+        <b>Rating: </b>{{ book[0]['rating'] }}<br />
+        <b>Released year: </b>{{ book[0]['release_year'].strftime("%Y") }}<br />
+    </div><br/>
+    {% endfor %}
+
+</div>
+
+
+
+
+{% endblock content %}

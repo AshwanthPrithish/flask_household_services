@@ -56,6 +56,35 @@
         </fieldset>
     </form>
   </div>
+
+  <div class="container">
+    <form method="POST" action="">
+        {{ form2.hidden_tag() }}
+        <fieldset class="form-group">
+        <legend class="border-bottom mb-4">{{ legend }}</legend>
+        
+        <div class="form-group">
+            {{ form2.author.label(class="form-control-label") }}
+            {% if form2.author.errors %}
+            {{ form2.author(class="form-control form-control-lg is-invalid") }}
+            <div class="invalid-feedback">
+                {% for error in form2.title.errors %}
+                <span>{{ error }}</span>
+                {% endfor %}
+            </div>
+            {% else %}
+                {{ form2.author(class="form-control form-control-lg") }}
+            {% endif %}
+        </div>
+        
+        
+        <div class="form-group">
+            {{ form2.submit(class="btn btn-outline-info") }}
+        </div>
+        </fieldset>
+    </form>
+  </div>
+
 <br/><br/>
 {% if issued_books %}
 <h2>Currently Issued Book Details</h2>

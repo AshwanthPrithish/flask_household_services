@@ -7,7 +7,7 @@ from datetime import datetime, timedelta
 from PIL import Image
 from flask import render_template,flash, redirect, url_for, request, make_response
 from flask_project import app, db, bcrypt
-from flask_project.forms import BookRequestForm, RegistrationForm, LoginForm, SPRegistrationForm, SPLoginForm, UpdateStudentAccount, UpdateSPAccount, SectionForm, BookAddForm, FeedBackForm, SearchSectionForm, SearchTitleForm
+from flask_project.forms import BookRequestForm, RegistrationForm, LoginForm, SPRegistrationForm, SPLoginForm, UpdateStudentAccount, UpdateSPAccount, SectionForm, BookAddForm, FeedBackForm, SearchSectionForm, SearchTitleForm, SearchAuthorForm
 from flask_project.models import Student, Librarian, Book, BookIssue, Genre, BookRequest, FeedBack
 from flask_login import login_user, current_user, logout_user, login_required
 from sqlalchemy import func
@@ -32,7 +32,11 @@ def student_dash():
        if form1.validate_on_submit():
           title = form1.title.data
           return redirect(url_for('search_results_title', query=title))
-       return render_template("student_dashboard.html", title="Student Dashboard", form=form, form1=form1)
+       form2 = SearchAuthorForm()
+       if form2.validate_on_submit():
+          author = form2.author.data
+          return redirect(url_for('search_results_author', query=author))
+       return render_template("student_dashboard.html", title="Student Dashboard", form=form, form1=form1, form2=form2)
   else:
        flash("Access Denied! You do not have permission to view this page.", "danger")
        return redirect(url_for("home"))
@@ -44,9 +48,9 @@ def search_results_section(query):
    if len(sections) <= 0:
       flash(f'No sections found for the query {query}!', 'danger')
       return redirect(url_for('student_dash'))
-   return render_template('search_results_section.html', sections=sections, title='Search')
+   return render_template('search_results_section.html', sections=sections, title='Search by section')
 
-@app.route("/search-results_title/<query>")
+@app.route("/search-results-title/<query>")
 @login_required
 def search_results_title(query):
    titles = Book.query.filter(func.lower(Book.title).ilike(f"%{query.lower()}%")).all()
@@ -59,7 +63,22 @@ def search_results_title(query):
    if len(books) <= 0:
       flash(f'No books found for the query {query}!', 'danger')
       return redirect(url_for('student_dash'))
-   return render_template('search_results_title.html', titles=books, title='Search')
+   return render_template('search_results_title.html', titles=books, title='Search by book title')
+
+@app.route("/search-results-author/<query>")
+@login_required
+def search_results_author(query):
+   books = Book.query.filter(func.lower(Book.author).ilike(f"%{query.lower()}%")).all()
+   books = [[{'title':book.title, 'author':book.author,'lang': book.lang ,'content':book.content, 'rating':book.rating, 'release_year':book.release_year,'id':book.id},book.genre_id, Genre.query.filter_by(id=book.genre_id).first().name] for book in books]
+   if current_user.role == 'student':
+           for book in books:
+              if len(BookIssue.query.filter_by(student_id=current_user.id, book_id=book[0].get('id')).all()) <= 0:
+                 del book[0]['content']
+   books.sort(key = lambda x: x[0].get('rating'), reverse=True)
+   if len(books) <= 0:
+      flash(f'No books found for the query {query}!', 'danger')
+      return redirect(url_for('student_dash'))
+   return render_template('search_results_author.html', titles=books, title='Search by author')
 
 
 @app.route("/sp-dash", methods=['GET', 'POST'])
@@ -77,10 +96,15 @@ def sp_dash():
           title = form1.title.data
           flash(f'{title}', 'success')
           return redirect(url_for('search_results_title', query=title))
+       form2 = SearchAuthorForm()
+       if form2.validate_on_submit():
+          author = form2.author.data
+          return redirect(url_for('search_results_author', query=author))
        
        book_issues = BookIssue.query.all()
        book_issues = [[book_issue.issue_date, book_issue.return_date, Student.query.filter_by(id=book_issue.student_id).first().username, Book.query.filter_by(id=book_issue.book_id).first().title, Librarian.query.filter_by(id=book_issue.librarian_id).first().username, book_issue.id] for book_issue in book_issues]
-       return render_template("sp_dashboard.html", title="Librarian Dashboard", issued_books = book_issues, form=form, form1=form1)
+       
+       return render_template("sp_dashboard.html", title="Librarian Dashboard", issued_books = book_issues, form=form, form1=form1, form2=form2)
   else:
        flash("Access Denied! You do not have permission to view this page.", "danger")
        return redirect(url_for("home"))
@@ -590,7 +614,7 @@ def download_book(book_id):
     flash("Access Denied! You do not have permission to view this page.", "danger")
     return redirect(url_for("home"))
    else:
-      lang_dict = {'hindi': 'Noto Sans Devanagari', 'tamil': 'Noto Serif Tamil', 'telugu': 'Noto Sans Telugu', 'malayalam': 'Noto Sans Malayalam', 'kannada': 'Noto Sans Kannada'}
+      lang_dict = {'hindi': 'Noto Sans Devanagari', 'tamil': 'Noto Serif Tamil', 'telugu': 'Noto Sans Telugu', 'malayalam': 'Noto Sans Malayalam', 'kannada': 'Noto Sans Kannada', 'english':''}
       book=Book.query.filter_by(id=book_id).first()
       lang = book.lang.lower()
 
