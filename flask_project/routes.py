@@ -2,6 +2,9 @@ import secrets
 import os
 import re
 import pdfkit
+import matplotlib
+matplotlib.use('Agg')
+import matplotlib.pyplot as plt
 
 from datetime import datetime, timedelta
 from PIL import Image
@@ -647,3 +650,100 @@ def download_book(book_id):
 
       return response
    
+
+def save_graph(filename, role):
+   _, ext = os.path.splitext(filename)
+   picture_fn = f"{role}_available" + ext
+   picture_path = os.path.join(app.root_path, f'static/graphs', picture_fn)
+   
+   i = Image.open(filename)
+   i.save(picture_path)
+   
+   return picture_fn
+
+@app.route("/student-graphs")
+@login_required
+def student_graphs():
+   if current_user.role == 'librarian':
+      flash("Access Denied! You do not have permission to view this page.", "danger")
+      return redirect(url_for("home"))
+   issued_books = BookIssue.query.filter_by(student_id=current_user.id).all()
+   values = [k.name for i in issued_books for j in Book.query.filter_by(id=i.book_id).all() for k in Genre.query.filter_by(id=j.genre_id).all()]
+   value_counts = {}
+   for value in values:
+      value_counts[value] = value_counts.get(value, 0) + 1
+
+   # Pie chart
+   plt.figure(figsize=(8, 8))
+   plt.pie(value_counts.values(), labels=value_counts.keys(), autopct='%1.1f%%', startangle=140)
+   plt.axis('equal')
+   plt.title('Distribution of Genres in Issued Books')
+   picture_path = os.path.join(app.root_path, f'static/graphs/one.png')
+   plt.savefig(picture_path)
+   plt.close()
+
+   image = save_graph(picture_path, 'student')
+   image_url = url_for('static', filename='graphs/' + image)
+
+   genres = [i.name for i in Genre.query.all()]
+   value_counts = {}
+   for value in genres:
+      value_counts[value] = value_counts.get(value, 0) + 1
+
+   # Pie chart
+   plt.figure(figsize=(8, 8))
+   plt.pie(value_counts.values(), labels=value_counts.keys(), autopct='%1.1f%%', startangle=140)
+   plt.axis('equal')
+   plt.title('Distribution of Genres Available')
+   picture_path = os.path.join(app.root_path, f'static/graphs/two.png')
+   plt.savefig(picture_path)
+   plt.close()
+
+   image1 = save_graph(picture_path, 'all')
+   image_url1 = url_for('static', filename='graphs/' + image1)
+
+   return render_template('graph.html', image=image_url, image1=image_url1, title="Graph")
+
+
+@app.route("/sp-graphs")
+@login_required
+def sp_graphs():
+   if current_user.role != 'librarian':
+      flash("Access Denied! You do not have permission to view this page.", "danger")
+      return redirect(url_for("home"))
+   issued_books = BookIssue.query.all()
+   values = [k.name for i in issued_books for j in Book.query.filter_by(id=i.book_id).all() for k in Genre.query.filter_by(id=j.genre_id).all()]
+   value_counts = {}
+   for value in values:
+      value_counts[value] = value_counts.get(value, 0) + 1
+
+   # Pie chart
+   plt.figure(figsize=(8, 8))
+   plt.pie(value_counts.values(), labels=value_counts.keys(), autopct='%1.1f%%', startangle=140)
+   plt.axis('equal')
+   plt.title('Distribution of Genres in Issued Books')
+   picture_path = os.path.join(app.root_path, f'static/graphs/three.png')
+   plt.savefig(picture_path)
+   plt.close()
+
+   image = save_graph(picture_path, 'librarian')
+   image_url = url_for('static', filename='graphs/' + image)
+
+   genres = [i.name for i in Genre.query.all()]
+   value_counts = {}
+   for value in genres:
+      value_counts[value] = value_counts.get(value, 0) + 1
+
+   # Pie chart
+   plt.figure(figsize=(8, 8))
+   plt.pie(value_counts.values(), labels=value_counts.keys(), autopct='%1.1f%%', startangle=140)
+   plt.axis('equal')
+   plt.title('Distribution of Genres Available')
+   picture_path = os.path.join(app.root_path, f'static/graphs/four.png')
+   plt.savefig(picture_path)
+   plt.close()
+
+   image1 = save_graph(picture_path, 'all')
+   image_url1 = url_for('static', filename='graphs/' + image1)
+
+   return render_template('graph.html', image=image_url, image1=image_url1, title="Graph")
