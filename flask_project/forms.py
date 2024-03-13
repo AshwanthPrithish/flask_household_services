@@ -126,6 +126,7 @@ class BookRequestForm(FlaskForm):
 
 class FeedBackForm(FlaskForm):
     feedback = StringField('Feedback for Book', validators=[DataRequired()])
+    skipper = BooleanField('Skip Feedback?')
     submit = SubmitField()
 
 class SearchSectionForm(FlaskForm):

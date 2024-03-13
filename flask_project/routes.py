@@ -5,15 +5,17 @@ import pdfkit
 import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
+import jwt
 
 from datetime import datetime, timedelta
 from PIL import Image
-from flask import render_template,flash, redirect, url_for, request, make_response
+from flask import render_template,flash, redirect, url_for, request, make_response, jsonify
 from flask_project import app, db, bcrypt
 from flask_project.forms import BookRequestForm, RegistrationForm, LoginForm, SPRegistrationForm, SPLoginForm, UpdateStudentAccount, UpdateSPAccount, SectionForm, BookAddForm, FeedBackForm, SearchSectionForm, SearchTitleForm, SearchAuthorForm
 from flask_project.models import Student, Librarian, Book, BookIssue, Genre, BookRequest, FeedBack
 from flask_login import login_user, current_user, logout_user, login_required
 from sqlalchemy import func
+from flask_project.auth_middleware import token_required
 
 with app.app_context():
   db.create_all()
@@ -167,7 +169,9 @@ def login():
       return redirect(url_for('student_dash'))
     else:
       flash('Login unsuccessful, please check email, and password', 'danger')
+      
   return render_template("login.html", title="Login", form=form)
+
 
 @app.route("/sp-register", methods=['GET', 'POST'])
 def sp_register():
@@ -747,3 +751,137 @@ def sp_graphs():
    image_url1 = url_for('static', filename='graphs/' + image1)
 
    return render_template('graph.html', image=image_url, image1=image_url1, title="Graph")
+
+
+
+
+
+# API Endpoints
+
+# get books
+@app.route("/api/books", methods=['GET'])
+def api_get_books():
+   books = Book.query.all()
+   books = [{
+   'id' : book.id,
+   'author' : book.author,
+   'lang' : book.lang,
+   'content' : book.content,
+   'librarian_id' : book.librarian_id,
+   'genre_id' : book.genre_id} for book in books]
+   return jsonify(books)
+
+# post books
+@app.route("/api/books/add", methods=['DELETE'])
+@token_required
+def api_add_book(user_from_token):
+   data = request.json
+   if user_from_token.role != 'librarian':
+      return ({'message': 'Invalid credentials'}), 401
+   
+   else:
+      if len(Book.query.filter_by(title=data['title']).all()) > 0:
+         return ({'message': 'Book already exists'}), 401
+      year = datetime.strptime(data['release_year'], "%Y")
+      book = Book(title=data['title'],author=data['author'],content=data['content'], lang=data['lang'], rating=data['rating'],release_year=year,librarian_id=user_from_token.id,genre_id=data['genre_id'])
+      with app.app_context():
+         db.session.add(book)
+         db.session.commit()
+      return jsonify({"message": "Successfully added the book"}), 200
+
+
+#put books
+@app.route("/api/books/update", methods=["PUT"])
+@token_required
+def api_update_book(user_from_token):
+    if user_from_token.role != "librarian":
+      return ({'message': 'Invalid credentials'}), 401
+  
+    data = request.json
+    title = data['title']
+    id = Book.query.filter_by(title=title).first().id
+    book = Book.query.get_or_404(id)
+    if 'author' in data: book.author=data['author']
+    if 'content' in data: book.content=data['content']
+    if 'lang' in data: book.lang=data['lang']
+    if 'rating' in data: book.rating=data['rating']
+    if 'release_year' in data: book.release_year=data['release_year']
+    db.session.commit()
+    
+    return jsonify({"message": "Successfully updated the book"}), 200
+
+
+
+#delete books
+@app.route("/api/books/delete", methods=['POST'])
+@token_required
+def api_delete_book(user_from_token):
+   data = request.json
+   if user_from_token.role != 'librarian':
+      return ({'message': 'Invalid credentials'}), 401
+   
+   else:
+      if len(Book.query.filter_by(title=data['title']).all()) < 0:
+         return ({'message': 'Book does not exist'}), 401
+      id = Book.query.filter_by(title=data['title']).first().id
+      with app.app_context():
+         book = Book.query.get_or_404(id)
+         
+         feedbacks = FeedBack.query.filter_by(book_id=id).all()
+         for feedback in feedbacks:
+               db.session.delete(feedback)
+               db.session.commit()
+         
+         db.session.delete(book)
+         db.session.commit()
+      return jsonify({"message": "Successfully deleted the book"}), 200
+
+# student login api
+@app.route("/api/login", methods=['POST'])
+def api_login():
+  auth = request.json
+
+  if auth and 'email' in auth and 'password' in auth and 'role' in auth:
+     email = auth['email']
+     password = auth['password']
+
+     student = Student.query.filter_by(email=email).first()
+     if(bcrypt.check_password_hash(student.password, password)):
+            token = jwt.encode({'email': email, 'role': 'student'}, app.config['SECRET_KEY'])
+            return jsonify({'token': token}), 200
+ 
+  return jsonify({'message': 'Invalid credentials'}), 401
+
+
+# librarian login api
+@app.route("/api/sp-login", methods=['POST'])
+def api_login_librarian():
+  auth = request.json
+
+  if auth and 'email' in auth and 'password' in auth:
+     email = auth['email']
+     password = auth['password']
+
+     librarian = Librarian.query.filter_by(email=email).first()
+     if(bcrypt.check_password_hash(librarian.password, password)):
+            token = jwt.encode({'email': email, 'role': 'librarian'}, app.config['SECRET_KEY'])
+            return jsonify({'token': token}), 200
+ 
+  return jsonify({'message': 'Invalid credentials'}), 401
+
+
+#get student books
+@app.route("/api/student-books", methods=["GET"])
+@token_required
+def api_student_books(user_from_token):
+   book_issues = BookIssue.query.filter_by(student_id=user_from_token.id).all()
+   books = [Book.query.filter_by(id=book_issue.book_id).first() for book_issue in book_issues]
+   books = [{
+   'id' : book.id,
+   'author' : book.author,
+   'lang' : book.lang,
+   'content' : book.content,
+   'librarian_id' : book.librarian_id,
+   'genre_id' : book.genre_id} for book in books]
+   return jsonify(books)
+   
