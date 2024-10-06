@@ -1,5 +1,6 @@
 from flask_project import db, login_manager
 from datetime import datetime
+import datetime as dt
 from flask_login import UserMixin
 
 @login_manager.user_loader
@@ -7,90 +8,73 @@ def load_user(user_id):
     user = None
     
     if (int(user_id) >= 10000):
-        user = Librarian.query.filter_by(id=int(user_id)).first()
+        user = Service_Professional.query.filter_by(id=int(user_id)).first()
     else:
-        user = Student.query.filter_by(id=int(user_id)).first()
+        user = Customer.query.filter_by(id=int(user_id)).first()
     
     return user
-
-class Student(db.Model, UserMixin):
+class Customer(db.Model, UserMixin):
+    __tablename__ = 'customer'  # Explicitly defining the table name
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     username = db.Column(db.String(20), unique=True, nullable=False)
     email = db.Column(db.String(120), unique=True, nullable=False)
+    address = db.Column(db.String(400), unique=False, nullable=False)
+    contact = db.Column(db.String(15), unique=True, nullable=False)
     image_file = db.Column(db.String(20), nullable=False, default='default.jpg')
     password = db.Column(db.String(60), nullable=False)
-    book_issues = db.relationship('BookIssue', backref='student', lazy=True)
-    role = "student"
+    service_request = db.relationship('Service_Request', backref='customer', lazy=True)
+    role = "customer"
 
     def __repr__(self):
-        return f"Student('{self.username}', '{self.email}', '{self.image_file}')"
+        return f"Customer('{self.username}', '{self.email}', '{self.image_file}')"
 
-class Librarian(db.Model, UserMixin):
+class Service_Professional(db.Model, UserMixin):
+    __tablename__ = 'service_professional'  # Explicitly defining the table name
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     username = db.Column(db.String(20), unique=True, nullable=False)
     email = db.Column(db.String(120), unique=True, nullable=False)
-    admin_id = db.Column(db.String(20), unique=True, nullable=False)
+    date_created = db.Column(db.DateTime, nullable=False, default=datetime.now)
+    description = db.Column(db.String(400), unique=False, nullable=False)
     image_file = db.Column(db.String(20), nullable=False, default='default.jpg')
+    experience = db.Column(db.String(400), unique=False, nullable=False)
     password = db.Column(db.String(60), nullable=False)
-    books = db.relationship('Book', backref='librarian_admin', lazy=True)
-    genres = db.relationship('Genre', backref='librarian_admin', lazy=True)
-    book_issues = db.relationship('BookIssue', backref='librarian', lazy=True)
-    role = "librarian"
+    service = db.relationship('Service', backref='service_professional', lazy=True)
+    service_request = db.relationship('Service_Request', backref='service_professional', lazy=True)
+    role = "service_professional"
 
     def __repr__(self):
-        return f"Librarian('{self.username}', '{self.email}', '{self.image_file}')"
-    
-class Genre(db.Model):
+        return f"Service Professional('{self.username}', '{self.email}', '{self.image_file}')"
+
+class Service(db.Model):
+    __tablename__ = 'service'  # Explicitly defining the table name
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(100), unique=True, nullable=False)
-    date_created = db.Column(db.DateTime, default=datetime.now)
-    description = db.Column(db.String(100), nullable=False, default="Description yet to be added.")
-    books = db.relationship('Book', backref='genre_of_book', lazy=True)
-    librarian_id = db.Column(db.Integer, db.ForeignKey('librarian.id'), nullable=False)
+    price = db.Column(db.String(100), nullable=False)
+    description = db.Column(db.Text, nullable=False)
+    service_requests = db.relationship('Service_Request', backref='service', lazy=True)
 
     def __repr__(self):
-        return f"Genre('{self.name}', {self.books})"
+        return f"Service('{self.name}', '{self.description}')"
 
-class Book(db.Model):
+class Service_Request(db.Model):
+    __tablename__ = 'service_request'  # Explicitly defining the table name
     id = db.Column(db.Integer, primary_key=True)
-    title = db.Column(db.String(100), unique=True, nullable=False)
-    author = db.Column(db.String(100), nullable=False)
-    lang = db.Column(db.String(100), nullable=False)
-    content = db.Column(db.Text, nullable=False)
-    rating = db.Column(db.Integer, nullable=False)
-    release_year = db.Column(db.DateTime, nullable=False, default=datetime.now)
-    librarian_id = db.Column(db.Integer, db.ForeignKey('librarian.id'), nullable=False)
-    book_issues = db.relationship('BookIssue', backref='book', lazy=True)
-    genre_id = db.Column(db.Integer, db.ForeignKey('genre.id'), nullable=False)
+    date_of_request = db.Column(db.DateTime, nullable=False, default=datetime.now(dt.timezone.utc))
+    date_of_completion = db.Column(db.DateTime, nullable=False)
+    service_status = db.Column(db.String(100), nullable=False)
+    service_id = db.Column(db.Integer, db.ForeignKey('service.id'), nullable=False)
+    customer_id = db.Column(db.Integer, db.ForeignKey('customer.id'), nullable=False)
+    service_professional_id = db.Column(db.Integer, db.ForeignKey('service_professional.id'), nullable=False)
+    remark_id = db.Column(db.Integer, db.ForeignKey('remarks.id'), nullable=False)
 
     def __repr__(self):
-        return f"Book('{self.title}', '{self.author}')"
+        return f"Service_Request('{self.date_of_request}', '{self.date_of_completion}')"
 
-class BookIssue(db.Model):
+class Remarks(db.Model):
+    __tablename__ = 'remarks'  # Explicitly defining the table name
     id = db.Column(db.Integer, primary_key=True)
-    issue_date = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
-    return_date = db.Column(db.DateTime, nullable=False)
-    student_id = db.Column(db.Integer, db.ForeignKey('student.id'), nullable=False)
-    book_id = db.Column(db.Integer, db.ForeignKey('book.id'), nullable=False)
-    librarian_id = db.Column(db.Integer, db.ForeignKey('librarian.id'), nullable=False)
+    remarks = db.Column(db.String(100), nullable=False)
+    service_request = db.relationship('Service_Request', backref='remark', lazy=True)
 
     def __repr__(self):
-        return f"BookIssue('{self.issue_date}', '{self.return_date}')"
-
-class BookRequest(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    request_duration = db.Column(db.String(100), nullable=False)
-    book_id = db.Column(db.Integer, db.ForeignKey('book.id'), nullable=False)
-    student_id = db.Column(db.Integer, db.ForeignKey('student.id'), nullable=False)
-
-    def __repr__(self):
-        return f"BookRequest('{self.id}', '{self.request_duration}')"
-
-class FeedBack(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    book_id = db.Column(db.Integer, db.ForeignKey('book.id'), nullable=False)
-    student_id = db.Column(db.Integer, db.ForeignKey('student.id'), nullable=False)
-    feedback = db.Column(db.String(200), nullable=False)
-
-    def __repr__(self):
-        return f"FeedBack('{self.id}')"
+        return f"Remark('{self.service_request}', '{self.remarks}')"
