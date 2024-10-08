@@ -8,7 +8,7 @@ from flask_login import current_user
 class RegistrationForm(FlaskForm):
     username = StringField('Username', validators=[DataRequired(), Length(min=2, max=20)])
     email = StringField('Email', validators=[DataRequired(), Email()])
-    password = PasswordField("Password", validators=[DataRequired(), Regexp("^\d{5,8}$")])
+    password = PasswordField("Password", validators=[DataRequired(), Regexp(r"^(?=.*[A-Za-z])(?=.*\d)[A-Za-z\d@#$%^&+=]{5,8}$")])
     confirm_password = PasswordField("Confirm Password", validators=[DataRequired(), EqualTo('password')])
     submit = SubmitField("Sign Up")
 
@@ -31,8 +31,7 @@ class LoginForm(FlaskForm):
 class SPRegistrationForm(FlaskForm):
     username = StringField('Username', validators=[DataRequired(), Length(min=2, max=20)])
     email = StringField('Email', validators=[DataRequired(), Email()])
-    admin_id = StringField('Admin ID', validators=[DataRequired(), Length(min=2, max=20), Regexp("^\d{5,8}$")])
-    password = PasswordField("Password", validators=[DataRequired()])
+    password = PasswordField("Password", validators=[DataRequired(), Regexp(r"^(?=.*[A-Za-z])(?=.*\d)[A-Za-z\d@#$%^&+=]{5,8}$")])
     confirm_password = PasswordField("Confirm Password", validators=[DataRequired(), EqualTo('password')])
     description = StringField('Description', validators=[DataRequired(), Length(min=2, max=100)])
     experience = StringField('Experience', validators=[DataRequired(), Length(min=2, max=20)])
