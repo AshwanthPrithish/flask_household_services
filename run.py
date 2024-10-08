@@ -1,6 +1,7 @@
 from datetime import datetime
 from flask_project import db, app
 from flask_project.models import Customer, Service, Service_Request, Service_Professional
+import os
 
 def db_setup_rbac():
     with app.app_context():
@@ -34,22 +35,29 @@ def db_setup_rbac():
         service_professional_list = Service_Professional.query.all()
         if not service_professional_list:
             # Get the IDs of the services to associate with the service professional
-            service_ids = [service.id for service in Service.query.all()]
+            service_ids = [Service.query.first_or_404().id, Service.query.first_or_404().id]
 
             # Create a dummy service professional for each service
+            x = 0
             for service_id in service_ids:
                 dummy_service_professional = Service_Professional(
-                    id=1001 + service_id,  # Ensure unique IDs
-                    username=f'dummy_professional_{service_id}',
+                    id=1001 + x,  # Ensure unique IDs
+                    username=f'dummy_professional_{service_id+x}',
                     password='dummy_password',
-                    email=f'dummy_professional_{service_id}@gmail.com',
+                    email=f'dummy_professional_{service_id+x}@gmail.com',
                     description='Experienced household service provider',
                     experience="5 years",
                     service_id=service_id  # Associate with the service
                 )
                 db.session.add(dummy_service_professional)
+                x += 1 
             db.session.commit()
 
 if __name__ == "__main__":
     db_setup_rbac()
+    # try:
+    #     db_setup_rbac()
+    # except Exception as e:
+    #     # os.remove("/Users/ashwanth-21366/pers/old/flask-project/instance/site.db")
+    #     print(e)
     app.run(host='0.0.0.0', debug=True, port=5001)
