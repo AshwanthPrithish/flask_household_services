@@ -36,16 +36,18 @@ def db_setup_rbac():
             service_ids = [Service.query.first_or_404().id, Service.query.first_or_404().id]
 
             # Create a dummy service professional for each service
+            x = 0
             for service_id in service_ids:
                 dummy_service_professional = Service_Professional(
-                    id=1001 + service_id,  # Ensure unique IDs # type: ignore
-                    username=f'dummy_professional_{service_id}', # type: ignore
+                    id=1001 + x,  # Ensure unique IDs # type: ignore
+                    username=f'dummy_professional_{x}', # type: ignore
                     password='dummy_password', # type: ignore
-                    email=f'dummy_professional_{service_id}@gmail.com', # type: ignore
+                    email=f'dummy_professional_{x}@gmail.com', # type: ignore
                     description='Experienced household service provider', # type: ignore
                     experience="5 years", # type: ignore
                     service_id=service_id  # Associate with the service # type: ignore
                 )
+                x += 1
                 db.session.add(dummy_service_professional)
             db.session.commit()
 

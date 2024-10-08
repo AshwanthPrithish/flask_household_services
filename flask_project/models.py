@@ -28,7 +28,7 @@ class Customer(db.Model, UserMixin):
 
 class Service(db.Model):
     __tablename__ = 'service'
-    id = db.Column(db.Integer, primary_key=True)
+    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     name = db.Column(db.String(100), unique=True, nullable=False)
     price = db.Column(db.String(100), nullable=False)
     description = db.Column(db.Text, nullable=False)
@@ -61,7 +61,7 @@ class Service_Professional(db.Model, UserMixin):
 
 class Service_Request(db.Model):
     __tablename__ = 'service_request'
-    id = db.Column(db.Integer, primary_key=True)
+    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     date_of_request = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
     date_of_completion = db.Column(db.DateTime, nullable=False)
     service_status = db.Column(db.String(100), nullable=False)
@@ -82,7 +82,7 @@ class Service_Request(db.Model):
 
 class Remarks(db.Model):
     __tablename__ = 'remarks'
-    id = db.Column(db.Integer, primary_key=True)
+    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     remarks = db.Column(db.String(100), nullable=False)
 
     # Foreign key
