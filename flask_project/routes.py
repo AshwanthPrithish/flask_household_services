@@ -25,6 +25,73 @@ with app.app_context():
 def home():
   return render_template("home.html", title="Home")
 
+@app.route("/about-us")
+def about_us():
+  return render_template("about_us.html", title="About us")
+
+@app.route("/contact")
+def contact():
+  return render_template("contact.html", title="Contact")
+
+
+@app.route("/register", methods=['GET', 'POST'])
+def register():
+  if current_user.is_authenticated:
+    if current_user.role == "customer":
+       return redirect(url_for('home'))
+    else:
+       flash("Access Denied! You do not have permission to view this page.", "danger")
+       return redirect(url_for("home"))
+  form = RegistrationForm()
+  if form.validate_on_submit():
+    hashed_password = bcrypt.generate_password_hash(form.password.data).decode('utf-8')
+    customer = Customer(username=form.username.data, email=form.email.data, address=form.address.data, contact=form.contact.data,password=hashed_password)
+    with app.app_context():
+      db.session.add(customer)
+      db.session.commit()
+
+    flash(f'Your customer Account has been created!', 'success')
+    return redirect(url_for("login"))
+  return render_template("register.html", title="Register", form=form)
+
+@app.route("/login", methods=['GET', 'POST'])
+def login():
+  form = LoginForm()
+  if current_user.is_authenticated:
+    if current_user.role == "customer":
+       return redirect(url_for('home'))
+    else:
+       flash("Access Denied! You do not have permission to view this page.", "danger")
+       return redirect(url_for("home"))
+  if form.validate_on_submit():
+    customer = Customer.query.filter_by(email=form.email.data).first()
+    if customer and bcrypt.check_password_hash(customer.password, form.password.data):
+      login_user(customer, remember=form.remember.data)
+      flash(f'Your customer login was success!', 'success')
+      return redirect(url_for('home'))
+    else:
+      flash('Login unsuccessful, please check email, and password', 'danger')
+      
+  return render_template("login.html", title="Login", form=form)
+
+
+@app.route("/sp_login")
+def sp_login():
+  return render_template("contact.html", title="Contact")
+
+@app.route("/sp_register")
+def sp_register():
+  return render_template("contact.html", title="Contact")
+
+@app.route("/remarks")
+def remarks():
+   remarks = Remarks.query.all()
+   f = []
+   for remark in remarks:
+      service_request = Service_Request.query.filter_by(id=remark.service_request_id).first_or_404()
+      service_name = Service.query.filter_by(id=service_request.service_id).first().names
+      service_professional_name, customer_name = Service_Professional.query.filter(service_request.service_professional_id).first().name, Customer.query.filter(service_request.customer_id).first().name
+   return render_template('view_remarks.html', f_list = f, title="remarks")
 @app.route("/customer-dash", methods=['GET', 'POST'])
 @login_required
 def customer_dash():

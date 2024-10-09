@@ -8,18 +8,20 @@ from flask_login import current_user
 class RegistrationForm(FlaskForm):
     username = StringField('Username', validators=[DataRequired(), Length(min=2, max=20)])
     email = StringField('Email', validators=[DataRequired(), Email()])
+    address = StringField('Address', validators=[DataRequired(), Length(min=10, max=50)])
+    contact = StringField('Contact', validators=[DataRequired(), Length(min=9, max=10)])
     password = PasswordField("Password", validators=[DataRequired(), Regexp(r"^(?=.*[A-Za-z])(?=.*\d)[A-Za-z\d@#$%^&+=]{5,8}$")])
     confirm_password = PasswordField("Confirm Password", validators=[DataRequired(), EqualTo('password')])
     submit = SubmitField("Sign Up")
 
     def validate_username(self, username):
-        student = Customer.query.filter_by(username=username.data).first()
-        if student:
+        customer = Customer.query.filter_by(username=username.data).first()
+        if customer:
             raise ValidationError('That username is taken. Please choose a new one.')
         
     def validate_email(self, email):
-        student = Customer.query.filter_by(email=email.data).first()
-        if student:
+        customer = Customer.query.filter_by(email=email.data).first()
+        if customer:
             raise ValidationError('Customer with that email already exits. Try a new one.')
 
 class LoginForm(FlaskForm):

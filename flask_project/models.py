@@ -18,6 +18,7 @@ class Customer(db.Model, UserMixin):
     contact = db.Column(db.String(15), unique=True, nullable=False)
     image_file = db.Column(db.String(20), nullable=False, default='default.jpg')
     password = db.Column(db.String(60), nullable=False)
+    role = "customer"
 
     # Relationship to Service_Request
     service_requests = db.relationship('Service_Request', back_populates='customer', lazy=True)
