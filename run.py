@@ -9,7 +9,7 @@ def db_setup_rbac():
         customer_list = Customer.query.all()
         if not customer_list:
             dummy_customer = Customer(
-                id=10001, # type: ignore
+                id=1001, # type: ignore
                 username='dummy_customer', # type: ignore
                 password='dummy_password', # type: ignore
                 address="123 Dummy Street, Nowhere", # type: ignore
@@ -33,13 +33,13 @@ def db_setup_rbac():
         service_professional_list = Service_Professional.query.all()
         if not service_professional_list:
             # Get the IDs of the services to associate with the service professional
-            service_ids = [Service.query.first_or_404().id, Service.query.first_or_404().id]
+            service_ids = [Service.query.first_or_404().id]
 
             # Create a dummy service professional for each service
             x = 0
             for service_id in service_ids:
                 dummy_service_professional = Service_Professional(
-                    id=1001 + x,  # Ensure unique IDs # type: ignore
+                    id=10001,  # Ensure unique IDs # type: ignore
                     username=f'dummy_professional_{x}', # type: ignore
                     password='dummy_password', # type: ignore
                     email=f'dummy_professional_{x}@gmail.com', # type: ignore

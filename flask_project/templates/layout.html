@@ -34,8 +34,8 @@
             </li>
             {% if current_user.is_authenticated %}
                 <li class="nav-item">
-                  {% if current_user.role == 'student' %}
-                    <a class="nav-link" href="{{ url_for('student_dash') }}">Dashboard</a>
+                  {% if current_user.role == 'customer' %}
+                    <a class="nav-link" href="{{ url_for('customer_dash') }}">Dashboard</a>
                   {% else %}
                   <a class="nav-link" href="{{ url_for('sp_graphs') }}">View Library Graphs</a>
                    </li>
@@ -50,17 +50,14 @@
                   {% endif %}
                 </li>
                 <li class="nav-item">
-                  <a class="nav-link" href="{{ url_for('sections') }}">Sections</a>
+                  <a class="nav-link" href="{{ url_for('services') }}">Services</a>
                 </li>
-                {% if current_user.role == 'student' %}
+                {% if current_user.role == 'customer' %}
                    <li class="nav-item">
-                      <a class="nav-link" href="{{ url_for('student_graphs') }}">View Student Graphs</a>
+                      <a class="nav-link" href="{{ url_for('customer_graphs') }}">View Customer Graphs</a>
                    </li>
                    <li class="nav-item">
-                      <a class="nav-link" href="{{ url_for('student_requests') }}">View Requested Books</a>
-                   </li>
-                   <li class="nav-item">
-                      <a class="nav-link" href="{{ url_for('student_issued') }}">View my Issued Books</a>
+                      <a class="nav-link" href="{{ url_for('customer_requests') }}">View Requested Services</a>
                    </li>
                 {% endif %}
                 <li>

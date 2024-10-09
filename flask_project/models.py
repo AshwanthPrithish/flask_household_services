@@ -4,6 +4,7 @@ from flask_login import UserMixin
 
 @login_manager.user_loader
 def load_user(user_id):
+    print("inside here")
     if int(user_id) >= 10000:
         return Service_Professional.query.get(int(user_id))
     else:
@@ -55,6 +56,7 @@ class Service_Professional(db.Model, UserMixin):
     # Foreign key to relate to Service
     service_id = db.Column(db.Integer, db.ForeignKey('service.id'), nullable=False)
     service_requests = db.relationship('Service_Request', back_populates='service_professional', lazy=True)
+    role = "service_professional"
 
     def __repr__(self):
         return f"Service Professional('{self.username}', '{self.email}')"

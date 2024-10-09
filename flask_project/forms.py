@@ -37,7 +37,7 @@ class SPRegistrationForm(FlaskForm):
     confirm_password = PasswordField("Confirm Password", validators=[DataRequired(), EqualTo('password')])
     description = StringField('Description', validators=[DataRequired(), Length(min=2, max=100)])
     experience = StringField('Experience', validators=[DataRequired(), Length(min=2, max=20)])
-    service = SelectField('Service', validators=[DataRequired()])
+    service = SelectField('Service', choices=[]) 
     
     submit = SubmitField("Sign Up")
 
@@ -51,29 +51,33 @@ class SPRegistrationForm(FlaskForm):
         if librarian:
             raise ValidationError('Librarian with that email already exits. Try a new one.')
 
+class UpdateCustomerAccount(FlaskForm):
+    username = StringField('Username', validators=[DataRequired(), Length(min=2, max=20)])
+    email = StringField('Email', validators=[DataRequired(), Email()])
+    address = StringField('Address', validators=[DataRequired(), Length(min=10, max=50)])
+    contact = StringField('Contact', validators=[DataRequired(), Length(min=9, max=10)])
+    picture = FileField('Update Profile picture', validators=[FileAllowed(['jpg', 'jpeg', 'png'])])
+    submit = SubmitField("Update")
+
+    def validate_username(self, username):
+        if username.data != current_user.username:
+            customer = Customer.query.filter_by(username=username.data).first()
+            if customer:
+                raise ValidationError('That username is taken. Please choose a new one.')
+            
+    def validate_email(self, email):
+        if email.data != current_user.email:
+            customer = Customer.query.filter_by(email=email.data).first()
+            if customer:
+                raise ValidationError('That email already exits. Try a new one.')
+
+
 # class SPLoginForm(FlaskForm):
 #     email = StringField('Email', validators=[DataRequired(), Email()])
 #     password = PasswordField("Password", validators=[DataRequired()])
 #     remember = BooleanField("Remember Me")
 #     submit = SubmitField("Login")
 
-# class UpdateStudentAccount(FlaskForm):
-#     username = StringField('Username', validators=[DataRequired(), Length(min=2, max=20)])
-#     email = StringField('Email', validators=[DataRequired(), Email()])
-#     picture = FileField('Update Profile picture', validators=[FileAllowed(['jpg', 'jpeg', 'png'])])
-#     submit = SubmitField("Update")
-
-#     def validate_username(self, username):
-#         if username.data != current_user.username:
-#             student = Student.query.filter_by(username=username.data).first()
-#             if student:
-#                 raise ValidationError('That username is taken. Please choose a new one.')
-            
-#     def validate_email(self, email):
-#         if email.data != current_user.email:
-#             student = Student.query.filter_by(email=email.data).first()
-#             if student:
-#                 raise ValidationError('Student with that email already exits. Try a new one.')
             
 # class UpdateSPAccount(FlaskForm):
 #     username = StringField('Username', validators=[DataRequired(), Length(min=2, max=20)])
