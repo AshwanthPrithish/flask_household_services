@@ -187,9 +187,9 @@ def new_service():
       else:
         if len(Service.query.filter(func.lower(Service.name).ilike(f"%{form.name.data.lower()}%")).all()) > 0:
            flash('Section with that name already exists!', 'danger')
-           return redirect(url_for('new_section'))
+           return redirect(url_for('new_service'))
         d = form.date_created.data
-        service = Genre(name=form.title.data, description=form.content.data, date_created=d, librarian_id=current_user.id)
+        service = Service(name=form.title.data, description=form.content.data, date_created=d, librarian_id=current_user.id)
       with app.app_context():
          db.session.add(service)
          db.session.commit()
