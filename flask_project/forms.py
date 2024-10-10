@@ -8,7 +8,7 @@ from flask_login import current_user
 class RegistrationForm(FlaskForm):
     username = StringField('Username', validators=[DataRequired(), Length(min=2, max=20)])
     email = StringField('Email', validators=[DataRequired(), Email()])
-    address = StringField('Address', validators=[DataRequired(), Length(min=10, max=50)])
+    address = TextAreaField('Address', validators=[DataRequired(), Length(min=10, max=50)])
     contact = StringField('Contact', validators=[DataRequired(), Length(min=9, max=10)])
     password = PasswordField("Password", validators=[DataRequired(), Regexp(r"^(?=.*[A-Za-z])(?=.*\d)[A-Za-z\d@#$%^&+=]{5,8}$")])
     confirm_password = PasswordField("Confirm Password", validators=[DataRequired(), EqualTo('password')])
@@ -35,7 +35,7 @@ class SPRegistrationForm(FlaskForm):
     email = StringField('Email', validators=[DataRequired(), Email()])
     password = PasswordField("Password", validators=[DataRequired(), Regexp(r"^(?=.*[A-Za-z])(?=.*\d)[A-Za-z\d@#$%^&+=]{5,8}$")])
     confirm_password = PasswordField("Confirm Password", validators=[DataRequired(), EqualTo('password')])
-    description = StringField('Description', validators=[DataRequired(), Length(min=2, max=100)])
+    description = TextAreaField('Description', validators=[DataRequired(), Length(min=2, max=100)])
     experience = StringField('Experience', validators=[DataRequired(), Length(min=2, max=20)])
     service = SelectField('Service', choices=[]) 
     
@@ -54,7 +54,7 @@ class SPRegistrationForm(FlaskForm):
 class UpdateCustomerAccount(FlaskForm):
     username = StringField('Username', validators=[DataRequired(), Length(min=2, max=20)])
     email = StringField('Email', validators=[DataRequired(), Email()])
-    address = StringField('Address', validators=[DataRequired(), Length(min=10, max=50)])
+    address = TextAreaField('Address', validators=[DataRequired(), Length(min=10, max=50)])
     contact = StringField('Contact', validators=[DataRequired(), Length(min=9, max=10)])
     picture = FileField('Update Profile picture', validators=[FileAllowed(['jpg', 'jpeg', 'png'])])
     submit = SubmitField("Update")
@@ -72,45 +72,40 @@ class UpdateCustomerAccount(FlaskForm):
                 raise ValidationError('That email already exits. Try a new one.')
 
 
-# class SPLoginForm(FlaskForm):
-#     email = StringField('Email', validators=[DataRequired(), Email()])
-#     password = PasswordField("Password", validators=[DataRequired()])
-#     remember = BooleanField("Remember Me")
-#     submit = SubmitField("Login")
+class SPLoginForm(FlaskForm):
+    email = StringField('Email', validators=[DataRequired(), Email()])
+    password = PasswordField("Password", validators=[DataRequired()])
+    remember = BooleanField("Remember Me")
+    submit = SubmitField("Login")
 
             
-# class UpdateSPAccount(FlaskForm):
-#     username = StringField('Username', validators=[DataRequired(), Length(min=2, max=20)])
-#     email = StringField('Email', validators=[DataRequired(), Email()])
-#     admin_id = StringField('Admin ID', validators=[DataRequired(), Length(min=2, max=20), Regexp("^\d{5,8}$")])
-#     picture = FileField('Update Profile picture', validators=[FileAllowed(['jpg', 'jpeg', 'png'])])
-#     submit = SubmitField("Update")
+class UpdateSPAccount(FlaskForm):
+    username = StringField('Username', validators=[DataRequired(), Length(min=2, max=20)])
+    email = StringField('Email', validators=[DataRequired(), Email()])
+    picture = FileField('Update Profile picture', validators=[FileAllowed(['jpg', 'jpeg', 'png'])])
+    description = TextAreaField('Description', validators=[DataRequired(), Length(min=2, max=100)])
+    experience = StringField('Experience', validators=[DataRequired(), Length(min=2, max=20)])
+    service = SelectField('Service', choices=[]) 
+    submit = SubmitField("Update")
 
-#     def validate_username(self, username):
-#         if username.data != current_user.username:
-#             librarian = Librarian.query.filter_by(username=username.data).first()
-#             if librarian:
-#                 raise ValidationError('That username is taken. Please choose another one.')
+    def validate_username(self, username):
+        if username.data != current_user.username:
+            service_professional = Service_Professional.query.filter_by(username=username.data).first()
+            if service_professional:
+                raise ValidationError('That username is taken. Please choose another one.')
             
-#     def validate_email(self, email):
-#         if email.data != current_user.email:
-#             librarian = Librarian.query.filter_by(email=email.data).first()
-#             if librarian:
-#                 raise ValidationError('Librarian with that email already exits. Try another one.')
-    
-#     def validate_admin_id(self, admin_id):
-#         if admin_id.data != current_user.admin_id:
-#             librarian = Librarian.query.filter_by(admin_id=admin_id.data).first()
-#             if librarian:
-#                 raise ValidationError('Librarian with that admin ID already exits. Try another one.')
-#             elif int(admin_id.data) not in [48236, 76541, 23985, 50472, 19847, 65329, 31784, 92651, 84063, 57214]:
-#                 raise ValidationError(f'Unauthorized Admin ID. Contact Organization for further action.')
-            
-# class SectionForm(FlaskForm):
-#     title = StringField('Title', validators=[DataRequired()])
-#     date_created = DateTimeField('Date Added(Format dd-mm-yyyy)', format="%d-%m-%Y", validators=[DataRequired()])
-#     content = TextAreaField('Content', validators=[DataRequired()])
-#     submit = SubmitField()
+    def validate_email(self, email):
+        if email.data != current_user.email:
+            service_professional = Service_Professional.query.filter_by(email=email.data).first()
+            if service_professional:
+                raise ValidationError('That email already exits. Try another one.')
+
+
+class ServiceForm(FlaskForm):
+    name = StringField('Name', validators=[DataRequired()])
+    price = StringField('Price', validators=[DataRequired()])
+    description = TextAreaField('Description', validators=[DataRequired()])
+    submit = SubmitField()
     
 # class BookAddForm(FlaskForm):
 #     title = StringField('Title', validators=[DataRequired()])

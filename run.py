@@ -24,7 +24,8 @@ def db_setup_rbac():
         if not service_list:
             # Create three dummy services
             services = [
-                Service(name='Dummy Service', price='50', description='dummy service'), # type: ignore
+                Service(name='Cleaning', price='50', description='cleaning service'), # type: ignore
+                 Service(name='Washing', price='50', description='washing service'), # type: ignore
             ]
             db.session.bulk_save_objects(services)  # Bulk add services
             db.session.commit()

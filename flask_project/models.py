@@ -4,7 +4,6 @@ from flask_login import UserMixin
 
 @login_manager.user_loader
 def load_user(user_id):
-    print("inside here")
     if int(user_id) >= 10000:
         return Service_Professional.query.get(int(user_id))
     else:

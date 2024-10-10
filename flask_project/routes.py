@@ -11,7 +11,7 @@ from datetime import datetime, timedelta
 from PIL import Image
 from flask import render_template,flash, redirect, url_for, request, make_response, jsonify
 from flask_project import app, db, bcrypt
-from flask_project.forms import RegistrationForm, LoginForm, SPRegistrationForm, SearchServiceForm, SearchServiceProfessionalForm, UpdateCustomerAccount
+from flask_project.forms import RegistrationForm, LoginForm, SPLoginForm, SPRegistrationForm, SearchServiceForm, SearchServiceProfessionalForm, ServiceForm, UpdateCustomerAccount, UpdateSPAccount
 from flask_project.models import Customer, Service_Professional, Service, Service_Request, Remarks
 from flask_login import login_user, current_user, logout_user, login_required
 from sqlalchemy import func
@@ -94,15 +94,32 @@ def customer_dash():
        return redirect(url_for("home"))
 
 
-@app.route("/sp_login")
+@app.route("/sp-login", methods=['GET', 'POST'])
 def sp_login():
-  return render_template("contact.html", title="Contact")
+  form = SPLoginForm()
+  if current_user.is_authenticated:
+    if current_user.role == "service_professional":
+       return redirect(url_for('sp_dash'))
+    else:
+       flash(f"Access Denied! You do not have permission to view this page.", "danger")
+       return redirect(url_for("home"))
+  
+  if form.validate_on_submit():
+    service_professional = Service_Professional.query.filter_by(email=form.email.data).first()
+    if service_professional and bcrypt.check_password_hash(service_professional.password, form.password.data):
+      login_user(service_professional, remember=form.remember.data)
+      flash('Login successful', 'success')
+      return redirect(url_for('sp_dash'))
+    else:
+      flash('Login unsuccessful, please check email, and password', 'danger')
+  return render_template("sp_login.html", title="Admin Login", form=form)
+
 
 @app.route("/sp_dash")
 def sp_dash():
   return render_template("contact.html", title="Contact")
 
-@app.route("/sp_register")
+@app.route("/sp_register",methods=['GET', 'POST'])
 def sp_register():
     if current_user.is_authenticated:
         if current_user.role == "service_professional":
@@ -112,14 +129,14 @@ def sp_register():
           return redirect(url_for("home"))
     form = SPRegistrationForm()
     services = Service.query.all()
-    form.service.choices = [(service, service) for service in services]
+    form.service.choices = [service.name for service in services]
     if form.validate_on_submit():
        hashed_password = bcrypt.generate_password_hash(form.password.data).decode('utf-8')
-       service_professional = Service_Professional(username=form.username.data, email=form.email.data, password=hashed_password, description=form.description.data, experience=form.experience.data, service=form.service.data)
+       service_professional = Service_Professional(username=form.username.data, email=form.email.data, password=hashed_password, description=form.description.data, experience=form.experience.data, service_id=Service.query.filter_by(name=form.service.data).first().id)
        with app.app_context():
          db.session.add(service_professional)
          db.session.commit()
-       flash(f'Account Created for Admin {form.username.data}!', 'success')
+       flash(f'Account Created for Service professional {form.username.data}!', 'success')
        return redirect(url_for("sp_login"))
     return render_template("sp_register.html", title="Admin Register", form=form, services=services)
 
@@ -154,6 +171,32 @@ def customer_requests():
       details = []
    return render_template('customer_requests.html', requested_services=details, title='Requests')
 
+
+@app.route("/service/new", methods=['GET', 'POST'])
+@login_required
+def new_service():
+  # return render_template('home.html', image="", image1="", title="Graph")
+  if current_user.role != "service_professional":
+    flash(f"Access Denied! You do not have permission to view this page.{current_user.role} acc", "danger")
+    return redirect(url_for("home"))
+  
+  form = ServiceForm()
+  if form.validate_on_submit():
+      if form.date_created.data == '':
+        service = Service(name=form.name.data, price=form.price.data ,description=form.description.data)
+      else:
+        if len(Service.query.filter(func.lower(Service.name).ilike(f"%{form.name.data.lower()}%")).all()) > 0:
+           flash('Section with that name already exists!', 'danger')
+           return redirect(url_for('new_section'))
+        d = form.date_created.data
+        service = Genre(name=form.title.data, description=form.content.data, date_created=d, librarian_id=current_user.id)
+      with app.app_context():
+         db.session.add(service)
+         db.session.commit()
+         flash('The Section has been created!', 'success')
+      return redirect(url_for('sections'))
+  return render_template('create_section.html', title="New Section", form=form, legend='New Section')
+  
 
 @app.route("/customer-graphs")
 @login_required
@@ -239,27 +282,35 @@ def account():
         image_file = url_for('static', filename='profile_pics/student_pics/' + current_user.image_file)
         return render_template("customer_account.html", title="Student Account", image_file=image_file, form=form)
   
-  # elif current_user.role == "librarian":
-  #       form = UpdateSPAccount()
-  #       if form.validate_on_submit():
-  #           if form.picture.data:
-  #              picture_file = save_picture(form.picture.data, 'admin_pics')
-  #              with app.app_context():
-  #               current_user.image_file = picture_file
-  #               db.session.commit()
-  #           with app.app_context():
-  #             current_user.username = form.username.data
-  #             current_user.email = form.email.data
-  #             current_user.admin_id = form.admin_id.data
-  #             db.session.commit()
-  #           flash('Your Account has been updated!', category='success')
-  #           return redirect(url_for('account'))
-  #       elif request.method == "GET":
-  #          form.username.data = current_user.username
-  #          form.email.data = current_user.email
-  #          form.admin_id.data = current_user.admin_id
-  #       image_file = url_for('static', filename='profile_pics/admin_pics/' + current_user.image_file)
-  #       return render_template("sp_account.html", title="Librarian Account", image_file=image_file, form=form)
+  elif current_user.role == "service_professional":
+        form = UpdateSPAccount()
+        form.service.choices = [service.name for service in Service.query.all()]
+        if form.validate_on_submit():
+            if form.picture.data:
+               picture_file = save_picture(form.picture.data, 'admin_pics')
+               with app.app_context():
+                current_user.image_file = picture_file
+                db.session.commit()
+            with app.app_context():
+              current_user.username = form.username.data
+              current_user.email = form.email.data
+              current_user.description = form.description.data
+              current_user.experience = form.experience.data
+              current_user.service_id = Service.query.filter_by(name=form.service.data).first().id
+              db.session.commit()
+            flash('Your Account has been updated!', category='success')
+            return redirect(url_for('account'))
+        elif request.method == "GET":
+           form.username.data = current_user.username
+           form.email.data = current_user.email
+           form.description.data = current_user.description
+           form.experience.data = current_user.experience
+           selected_service = Service.query.filter_by(id=current_user.service_id).first().name
+           if selected_service:
+                form.service.data = selected_service
+
+        image_file = url_for('static', filename='profile_pics/admin_pics/' + current_user.image_file)
+        return render_template("sp_account.html", title="Librarian Account", image_file=image_file, form=form)
   
   else:
         flash(f"Access Denied! You do not have permission to view this page.{current_user.role} acc", "danger")
@@ -273,25 +324,56 @@ def logout():
   return redirect(url_for('home'))
 
 
-# @app.route("/sp-login", methods=['GET', 'POST'])
-# def sp_login():
-#   form = SPLoginForm()
-#   if current_user.is_authenticated:
-#     if current_user.role == "librarian":
-#        return redirect(url_for('sp_dash'))
-#     else:
-#        flash(f"Access Denied! You do not have permission to view this page.", "danger")
-#        return redirect(url_for("home"))
-  
-#   if form.validate_on_submit():
-#     librarian = Librarian.query.filter_by(email=form.email.data).first()
-#     if librarian and bcrypt.check_password_hash(librarian.password, form.password.data):
-#       login_user(librarian, remember=form.remember.data)
-#       return redirect(url_for('sp_dash'))
-#     else:
-#       flash('Login unsuccessful, please check email, and password', 'danger')
-#   return render_template("sp_login.html", title="Admin Login", form=form)
+@app.route("/sp-graphs")
+@login_required
+def sp_graphs():
+   return render_template('home.html', image="", image1="", title="Graph")
+#    if current_user.role != 'librarian':
+#       flash("Access Denied! You do not have permission to view this page.", "danger")
+#       return redirect(url_for("home"))
+#    issued_books = BookIssue.query.all()
+#    values = [k.name for i in issued_books for j in Book.query.filter_by(id=i.book_id).all() for k in Genre.query.filter_by(id=j.genre_id).all()]
+#    value_counts = {}
+#    for value in values:
+#       value_counts[value] = value_counts.get(value, 0) + 1
 
+#    # Pie chart
+#    plt.figure(figsize=(8, 8))
+#    plt.pie(value_counts.values(), labels=value_counts.keys(), autopct='%1.1f%%', startangle=140)
+#    plt.axis('equal')
+#    plt.title('Distribution of Genres in Issued Books')
+#    picture_path = os.path.join(app.root_path, f'static/graphs/three.png')
+#    plt.savefig(picture_path)
+#    plt.close()
+
+#    image = save_graph(picture_path, 'librarian')
+#    image_url = url_for('static', filename='graphs/' + image)
+
+#    genres = [i.name for i in Genre.query.all()]
+#    value_counts = {}
+#    for value in genres:
+#       value_counts[value] = value_counts.get(value, 0) + 1
+
+#    # Pie chart
+#    plt.figure(figsize=(8, 8))
+#    plt.pie(value_counts.values(), labels=value_counts.keys(), autopct='%1.1f%%', startangle=140)
+#    plt.axis('equal')
+#    plt.title('Distribution of Genres Available')
+#    picture_path = os.path.join(app.root_path, f'static/graphs/four.png')
+#    plt.savefig(picture_path)
+#    plt.close()
+
+#    image1 = save_graph(picture_path, 'all')
+#    image_url1 = url_for('static', filename='graphs/' + image1)
+
+#    return render_template('graph.html', image=image_url, image1=image_url1, title="Graph")
+
+
+@app.route('/pending-requests')
+@login_required
+def pending_requests():
+   return render_template('home.html',title="Pending Requests")
+   
 
 # @app.route("/search-results-section/<query>")
 # @login_required
@@ -364,31 +446,6 @@ def logout():
 
 
 
-
-# @app.route("/section/new", methods=['GET', 'POST'])
-# @login_required
-# def new_section():
-#   if current_user.role != "librarian":
-#     flash(f"Access Denied! You do not have permission to view this page.{current_user.role} acc", "danger")
-#     return redirect(url_for("home"))
-  
-#   form = SectionForm()
-#   if form.validate_on_submit():
-#       if form.date_created.data == '':
-#         section = Genre(name=form.title.data, description=form.content.data, librarian_id=current_user.id)
-#       else:
-#         if len(Genre.query.filter(func.lower(Genre.name).ilike(f"%{form.title.data.lower()}%")).all()) > 0:
-#            flash('Section with that name already exists!', 'danger')
-#            return redirect(url_for('new_section'))
-#         d = form.date_created.data
-#         section = Genre(name=form.title.data, description=form.content.data, date_created=d, librarian_id=current_user.id)
-#       with app.app_context():
-#          db.session.add(section)
-#          db.session.commit()
-#          flash('The Section has been created!', 'success')
-#       return redirect(url_for('sections'))
-#   return render_template('create_section.html', title="New Section", form=form, legend='New Section')
-  
 # @app.route("/section/<int:section_id>")
 # @login_required
 # def section(section_id):
@@ -570,17 +627,7 @@ def logout():
 #       details = [[Book.query.filter_by(id=x.book_id).first().title, BookRequest.query.filter_by(id=x.id).first().request_duration] for x in requested_books]
 #    return render_template('student_requests.html', requested_books=details, title='Requests')
 
-# @app.route('/pending-requests')
-# @login_required
-# def pending_requests():
-#    if current_user.role != 'librarian':
-#       flash(f"Access Denied! Only Librarian can view this page", "danger")
-#       return redirect(url_for("home"))
-#    else:
-#       pending_requests = BookRequest.query.all()
-#       details = [[x.id, Book.query.filter_by(id=x.book_id).first().title, Student.query.filter_by(id=x.student_id).first().username, x.request_duration] for x in pending_requests]
-#    return render_template('pending_requests.html', requests=details, title="Pending Requests")
-   
+
   
 
 # def duration_to_timedelta(st):
@@ -792,48 +839,6 @@ def logout():
 #    return render_template('graph.html', image=image_url, image1=image_url1, title="Graph")
 
 
-# @app.route("/sp-graphs")
-# @login_required
-# def sp_graphs():
-#    if current_user.role != 'librarian':
-#       flash("Access Denied! You do not have permission to view this page.", "danger")
-#       return redirect(url_for("home"))
-#    issued_books = BookIssue.query.all()
-#    values = [k.name for i in issued_books for j in Book.query.filter_by(id=i.book_id).all() for k in Genre.query.filter_by(id=j.genre_id).all()]
-#    value_counts = {}
-#    for value in values:
-#       value_counts[value] = value_counts.get(value, 0) + 1
-
-#    # Pie chart
-#    plt.figure(figsize=(8, 8))
-#    plt.pie(value_counts.values(), labels=value_counts.keys(), autopct='%1.1f%%', startangle=140)
-#    plt.axis('equal')
-#    plt.title('Distribution of Genres in Issued Books')
-#    picture_path = os.path.join(app.root_path, f'static/graphs/three.png')
-#    plt.savefig(picture_path)
-#    plt.close()
-
-#    image = save_graph(picture_path, 'librarian')
-#    image_url = url_for('static', filename='graphs/' + image)
-
-#    genres = [i.name for i in Genre.query.all()]
-#    value_counts = {}
-#    for value in genres:
-#       value_counts[value] = value_counts.get(value, 0) + 1
-
-#    # Pie chart
-#    plt.figure(figsize=(8, 8))
-#    plt.pie(value_counts.values(), labels=value_counts.keys(), autopct='%1.1f%%', startangle=140)
-#    plt.axis('equal')
-#    plt.title('Distribution of Genres Available')
-#    picture_path = os.path.join(app.root_path, f'static/graphs/four.png')
-#    plt.savefig(picture_path)
-#    plt.close()
-
-#    image1 = save_graph(picture_path, 'all')
-#    image_url1 = url_for('static', filename='graphs/' + image1)
-
-#    return render_template('graph.html', image=image_url, image1=image_url1, title="Graph")
 
 
 
