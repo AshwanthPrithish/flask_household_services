@@ -113,6 +113,11 @@ class ServiceForm(FlaskForm):
     description = TextAreaField('Description', validators=[DataRequired()])
     submit = SubmitField()
 
+class ServiceRequestForm(FlaskForm):
+    date_of_request = DateTimeField('Date of Request', format="%d-%m-%Y", validators=[DataRequired()])
+    request_duration = StringField('Period of Borrowing/days/weeks):(Eg: Enter "7 hours,6 days, 8 weeks" to borrow for 7 hours, 6 days, and 8 weeks', validators=[DataRequired()])
+    submit = SubmitField()
+
 # class BookRequestForm(FlaskForm):
 #     request_duration = StringField('Period of Borrowing/days/weeks):(Eg: Enter "7 hours,6 days, 8 weeks" to borrow for 7 hours, 6 days, and 8 weeks', validators=[DataRequired()])
 #     submit = SubmitField()

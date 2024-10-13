@@ -1,5 +1,5 @@
 {% extends "layout.html" %} {% block content %}
-<h1>Library Management System - Admin {{ current_user.username }} Dashboard</h1>
+<h1>HouseHold Services Hub - Service Professional {{ current_user.username }} Dashboard</h1>
 
 <div class="container">
     <form method="POST" action="">
@@ -8,16 +8,16 @@
         <legend class="border-bottom mb-4">{{ legend }}</legend>
         
         <div class="form-group">
-            {{ form.section.label(class="form-control-label") }}
-            {% if form.section.errors %}
-            {{ form.section(class="form-control form-control-lg is-invalid") }}
+            {{ form.service.label(class="form-control-label") }}
+            {% if form.service.errors %}
+            {{ form.service(class="form-control form-control-lg is-invalid") }}
             <div class="invalid-feedback">
-                {% for error in form.section.errors %}
+                {% for error in form.service.errors %}
                 <span>{{ error }}</span>
                 {% endfor %}
             </div>
             {% else %}
-                {{ form.section(class="form-control form-control-lg") }}
+                {{ form.service(class="form-control form-control-lg") }}
             {% endif %}
         </div>
         
@@ -36,16 +36,16 @@
         <legend class="border-bottom mb-4">{{ legend }}</legend>
         
         <div class="form-group">
-            {{ form1.title.label(class="form-control-label") }}
-            {% if form1.title.errors %}
+            {{ form1.service_professional.label(class="form-control-label") }}
+            {% if form1.service_professional.errors %}
             {{ form1.title(class="form-control form-control-lg is-invalid") }}
             <div class="invalid-feedback">
-                {% for error in form1.title.errors %}
+                {% for error in form1.service_professional.errors %}
                 <span>{{ error }}</span>
                 {% endfor %}
             </div>
             {% else %}
-                {{ form1.title(class="form-control form-control-lg") }}
+                {{ form1.service_professional(class="form-control form-control-lg") }}
             {% endif %}
         </div>
         
@@ -57,73 +57,7 @@
     </form>
   </div>
 
-  <div class="container">
-    <form method="POST" action="">
-        {{ form2.hidden_tag() }}
-        <fieldset class="form-group">
-        <legend class="border-bottom mb-4">{{ legend }}</legend>
-        
-        <div class="form-group">
-            {{ form2.author.label(class="form-control-label") }}
-            {% if form2.author.errors %}
-            {{ form2.author(class="form-control form-control-lg is-invalid") }}
-            <div class="invalid-feedback">
-                {% for error in form2.title.errors %}
-                <span>{{ error }}</span>
-                {% endfor %}
-            </div>
-            {% else %}
-                {{ form2.author(class="form-control form-control-lg") }}
-            {% endif %}
-        </div>
-        
-        
-        <div class="form-group">
-            {{ form2.submit(class="btn btn-outline-info") }}
-        </div>
-        </fieldset>
-    </form>
-  </div>
-
-<br/><br/>
-{% if issued_books %}
-<h2>Currently Issued Book Details</h2>
-{% endif %}
-{% for issued_book in issued_books %}
-   <div class="container">
-    
-        <button type="button" class="btn btn-secondary btn-sm m-1" data-toggle="modal" data-target="#o{{ issued_book[5] }}one">Revoke Access</button><br/>
-    
-    
-    
-    <b>Issued Date: </b>{{ issued_book[0].strftime("%d-%m-%Y %H:%M:%S") }}<br />
-    <b>Return Date: </b>{{ issued_book[1].strftime("%d-%m-%Y %H:%M:%S") }}<br />
-    <b>Student name: </b>{{ issued_book[2] }}<br />
-    <b>Book Title: </b>{{ issued_book[3] }}<br />
-    <b>Issued by Librarian: </b>{{ issued_book[4] }}<br />
-   </div>
-   <br />
-
-
-   
-   <div class="modal fade" id="o{{ issued_book[5] }}one" tabindex="-1" role="dialog" aria-labelledby="one" aria-hidden="true">
-        <div class="modal-dialog" role="document">
-            <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="oneTitle">Revoke Access?</h5>
-                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-                <span aria-hidden="true">&times;</span>
-                </button>
-            </div>
-            <p style="margin-left: 5px;">Revoke Access <b>{{ issued_book[3] }}</b> to user <b>{{ issued_book[2] }}</b>?</p>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
-                <form action="{{ url_for('revoke_access', issue_id=issued_book[5]) }}" method="POST">
-                <input type="submit" class="btn btn-danger" value="Revoke" />
-                </form>
-            </div>
-            </div>
-        </div>
-    </div>
-{% endfor %}
 {% endblock content %}
+
+
+
