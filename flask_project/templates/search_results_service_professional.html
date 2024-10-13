@@ -1,0 +1,18 @@
+{% extends "layout.html" %} {% block content %}
+<h1>Search Results of Service Professional Name</h1>
+
+<div class="container">
+    {% for service_professional in service_professionals %}
+    <div class="container">
+        <b>Name: </b>{{ service_professional['name'] }}<br />
+        <b>Email: </b>{{ service_professional['email'] }}<br />
+        <b>Description: </b>{{ service_professional['description'] }}<br />
+        <b>Experience: </b>{{ service_professional['experience'] }}<br />
+        <b>Date Created: </b>{{ service_professional['date_created'] }}<br />
+        <br />
+    </div><br/>
+    {% endfor %}
+
+</div>
+
+{% endblock content %}

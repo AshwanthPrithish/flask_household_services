@@ -1,9 +1,17 @@
 from datetime import datetime
-from flask_project import db, app
-from flask_project.models import Customer, Service, Service_Request, Service_Professional
+from flask_project import db, app, bcrypt
+from flask_project.models import Admin, Customer, Service, Service_Request, Service_Professional
 import os
 
 def db_setup_rbac():
+    with app.app_context():
+        if not Admin.query.first():
+            # Create an admin user
+            hashed_password = bcrypt.generate_password_hash('admin').decode('utf-8')
+            admin_user = Admin(id=-1, username='admin', email='admin@test.com', password=hashed_password) # type: ignore
+            db.session.add(admin_user)
+            db.session.commit()
+
     with app.app_context():
         # Check for existing customers and create a dummy customer if none exist
         customer_list = Customer.query.all()

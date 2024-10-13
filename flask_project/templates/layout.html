@@ -10,7 +10,7 @@
       crossorigin="anonymous"
     />
     <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='styles.css') }}">
-    <title>{{ title }} - Library Management System</title>
+    <title>{{ title }} - HouseHold Services Hub</title>
   </head>
   <body>
     <h1></h1>
@@ -33,33 +33,35 @@
               <a class="nav-link" href="{{ url_for('contact') }}">Contact</a>
             </li>
             {% if current_user.is_authenticated %}
-                <li class="nav-item">
+               
                   {% if current_user.role == 'customer' %}
-                    <a class="nav-link" href="{{ url_for('customer_dash') }}">Dashboard</a>
-                  {% else %}
-                  <a class="nav-link" href="{{ url_for('sp_graphs') }}">View Library Graphs</a>
-                   </li>
                    <li class="nav-item">
-                    <a class="nav-link" href="{{ url_for('sp_dash') }}">Dashboard</a>
-                    </li>
-                    <li>
-                    <a class="nav-link" href="{{ url_for('new_service') }}">New Section</a>
-                    </li>
-                    <li>
-                      <a class="nav-link" href="{{ url_for('pending_requests') }}">Pending Requests</a>
-                  {% endif %}
-                </li>
-                <li class="nav-item">
-                  <a class="nav-link" href="{{ url_for('services') }}">Services</a>
-                </li>
-                {% if current_user.role == 'customer' %}
-                   <li class="nav-item">
+                     <a class="nav-link" href="{{ url_for('customer_dash') }}">Dashboard</a>
+                     </li>
+                    <li class="nav-item">
                       <a class="nav-link" href="{{ url_for('customer_graphs') }}">View Customer Graphs</a>
                    </li>
                    <li class="nav-item">
                       <a class="nav-link" href="{{ url_for('customer_requests') }}">View Requested Services</a>
                    </li>
-                {% endif %}
+                   {% elif current_user.role == 'service_professional' %}
+                    <li class="nav-item">
+                      <a class="nav-link" href="{{ url_for('sp_dash') }}">Dashboard</a>
+                    </li>
+                    <li class="nav-item">
+                      <a class="nav-link" href="{{ url_for('sp_graphs') }}">View Library Graphs</a>
+                    </li>
+                    <li>
+                        <a class="nav-link" href="{{ url_for('pending_requests') }}">Pending Requests</a>
+                    </li>
+                  {% else %}
+                  <li>
+                    <a class="nav-link" href="{{ url_for('new_service') }}">New Service</a>
+                    </li>
+                  {% endif %}
+                <li class="nav-item">
+                  <a class="nav-link" href="{{ url_for('services') }}">Services</a>
+                </li>
                 <li>
                   <a class="nav-link" href="{{ url_for('account') }}">Account</a>
                 </li>
@@ -68,16 +70,19 @@
                 </li>
             {% else %}
                 <li class="nav-item">
-                  <a class="nav-link" href="{{ url_for('login') }}">General User Login</a>
+                  <a class="nav-link" href="{{ url_for('login') }}">Customer Login</a>
                 </li>
                 <li class="nav-item">
-                  <a class="nav-link" href="{{ url_for('register') }}">General User Register</a>
+                  <a class="nav-link" href="{{ url_for('register') }}">Customer Register</a>
                 </li>
                 <li class="nav-item">
-                  <a class="nav-link" href="{{ url_for('sp_login') }}">Admin Login</a>
+                  <a class="nav-link" href="{{ url_for('sp_login') }}">Service Professional Login</a>
                 </li>
                 <li class="nav-item">
-                  <a class="nav-link" href="{{ url_for('sp_register') }}">Admin Register</a>
+                  <a class="nav-link" href="{{ url_for('sp_register') }}">Service Professional Register</a>
+                </li>
+                <li class="nav-item">
+                  <a class="nav-link" href="{{ url_for('admin_login') }}">Admin Login</a>
                 </li>
             {% endif %}
           </ul>

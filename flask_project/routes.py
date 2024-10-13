@@ -11,8 +11,8 @@ from datetime import datetime, timedelta
 from PIL import Image
 from flask import render_template,flash, redirect, url_for, request, make_response, jsonify
 from flask_project import app, db, bcrypt
-from flask_project.forms import RegistrationForm, LoginForm, SPLoginForm, SPRegistrationForm, SearchServiceForm, SearchServiceProfessionalForm, ServiceForm, UpdateCustomerAccount, UpdateSPAccount
-from flask_project.models import Customer, Service_Professional, Service, Service_Request, Remarks
+from flask_project.forms import AdminLoginForm, RegistrationForm, LoginForm, SPLoginForm, SPRegistrationForm, SearchServiceForm, SearchServiceProfessionalForm, ServiceForm, UpdateCustomerAccount, UpdateSPAccount
+from flask_project.models import Admin, Customer, Service_Professional, Service, Service_Request, Remarks
 from flask_login import login_user, current_user, logout_user, login_required
 from sqlalchemy import func
 from flask_project.auth_middleware import token_required
@@ -32,6 +32,45 @@ def about_us():
 @app.route("/contact")
 def contact():
   return render_template("contact.html", title="Contact")
+
+@app.route("/admin-login", methods=['GET', 'POST'])
+def admin_login():
+  form = AdminLoginForm()
+  if current_user.is_authenticated:
+    if current_user.role == "admin":
+       return redirect(url_for('home'))
+    else:
+       flash("Access Denied! You do not have permission to view this page.", "danger")
+       return redirect(url_for("home"))
+  if form.validate_on_submit():
+    admin = Admin.query.filter_by(email=form.email.data).first()
+    if admin and bcrypt.check_password_hash(admin.password, form.password.data):
+      login_user(admin, remember=form.remember.data)
+      flash(f'Your admin login was success!', 'success')
+      return redirect(url_for('admin_dash'))
+    else:
+      flash('Login unsuccessful, please check email, and password', 'danger')
+      
+  return render_template("admin_login.html", title="Login", form=form)
+
+@app.route("/admin-dash", methods=['GET', 'POST'])
+@login_required
+def admin_dash():
+   if current_user.role == "admin":
+      # form = SearchServiceForm()
+      # if form.validate_on_submit():
+      #   service = form.service.data
+      #   return redirect(url_for('search_results_service', query=service))
+      
+      # form1 = SearchServiceProfessionalForm()
+      # if form1.validate_on_submit():
+      #     service_professional = form1.service_professional.data
+      #     return redirect(url_for('search_results_service_professional', query=service_professional))
+      return render_template("admin_dashboard.html", title="Admin Dashboard")
+
+   else:
+       flash("Access Denied! You do not have permission to view this page.", "danger")
+       return redirect(url_for("home"))
 
 
 @app.route("/register", methods=['GET', 'POST'])
@@ -74,6 +113,7 @@ def login():
       
   return render_template("login.html", title="Login", form=form)
 
+
 @app.route("/customer-dash", methods=['GET', 'POST'])
 @login_required
 def customer_dash():
@@ -92,6 +132,29 @@ def customer_dash():
    else:
        flash("Access Denied! You do not have permission to view this page.", "danger")
        return redirect(url_for("home"))
+   
+@app.route("/search-results-service/<query>")
+@login_required
+def search_results_service(query):
+   services = Service.query.filter(func.lower(Service.name).ilike(f"%{query.lower()}%")).all()
+   services = [{'id':service.id,'name':service.name, 'price':service.price,'description': service.description }  for service in services]
+   services.sort(key = lambda x: x.get('id'), reverse=False)
+   if len(services) <= 0:
+      flash(f'No services found for the query {query}!', 'danger')
+      return redirect(url_for('home'))
+   return render_template('search_results_service.html', services=services, title='Search by Service Name')
+
+
+@app.route("/search-results-service-professional/<query>")
+@login_required
+def search_results_service_professional(query):
+   service_professionals = Service_Professional.query.filter(func.lower(Service_Professional.username).ilike(f"%{query.lower()}%")).all()
+   service_professionals = [{'id':service_professional.id,'name':service_professional.username, 'email':service_professional.email,'description': service_professional.description, 'experience':service_professional.experience, 'date_created':service_professional.date_created }  for service_professional in service_professionals]
+   service_professionals.sort(key = lambda x: x.get('id'), reverse=False)
+   if len(service_professionals) <= 0:
+      flash(f'No service professionals found for the query {query}!', 'danger')
+      return redirect(url_for('home'))
+   return render_template('search_results_service_professional.html', service_professionals=service_professionals, title='Search by Service Professional Name')
 
 
 @app.route("/sp-login", methods=['GET', 'POST'])
@@ -156,9 +219,8 @@ def remarks():
 @login_required
 def services():
   with app.app_context():
-     services_ = Service.query.all()
-     services_ = []
-  return render_template("sections.html", services_list=services_, title="Services")
+     services_ = [i for i in Service.query.all()]
+  return render_template("services.html", service_list=services_, title="Services")
 
 
 @app.route('/customer-requests')
@@ -175,27 +237,22 @@ def customer_requests():
 @app.route("/service/new", methods=['GET', 'POST'])
 @login_required
 def new_service():
-  # return render_template('home.html', image="", image1="", title="Graph")
   if current_user.role != "service_professional":
     flash(f"Access Denied! You do not have permission to view this page.{current_user.role} acc", "danger")
     return redirect(url_for("home"))
   
   form = ServiceForm()
   if form.validate_on_submit():
-      if form.date_created.data == '':
-        service = Service(name=form.name.data, price=form.price.data ,description=form.description.data)
-      else:
-        if len(Service.query.filter(func.lower(Service.name).ilike(f"%{form.name.data.lower()}%")).all()) > 0:
-           flash('Section with that name already exists!', 'danger')
+      if len(Service.query.filter(func.lower(Service.name).ilike(f"%{form.name.data.lower()}%")).all()) > 0:
+           flash('Service with that name already exists!', 'danger')
            return redirect(url_for('new_service'))
-        d = form.date_created.data
-        service = Service(name=form.title.data, description=form.content.data, date_created=d, librarian_id=current_user.id)
+      service = Service(name=form.name.data, description=form.description.data,price=form.price.data)
       with app.app_context():
          db.session.add(service)
          db.session.commit()
-         flash('The Section has been created!', 'success')
-      return redirect(url_for('sections'))
-  return render_template('create_section.html', title="New Section", form=form, legend='New Section')
+         flash('The Service has been created!', 'success')
+      return redirect(url_for('services'))
+  return render_template('create_service.html', title="New Service", form=form, legend='New Service')
   
 
 @app.route("/customer-graphs")
@@ -317,6 +374,67 @@ def account():
         return redirect(url_for("home"))
   
 
+@app.route("/service/<int:service_id>")
+@login_required
+def service(service_id):
+  with app.app_context():
+    service = Service.query.get_or_404(service_id)
+  with app.app_context():
+        offered_by_professionals = Service_Professional.query.filter_by(service_id=service_id).all()
+        offered_by_professionals = [{"name":professional.username, "email":professional.email, "description":professional.description, "experience": professional.experience, "date_created":professional.date_created} for professional in offered_by_professionals]
+  return render_template('service.html', name=service.name, service=service, offered_by_professionals=offered_by_professionals)
+
+
+@app.route("/service/<int:service_id>/request_service", methods=['GET', 'POST'])
+@login_required
+def request_service(service_id):
+   if current_user.role != 'customer':
+    flash(f"Access Denied! Only Customer can request Service", "danger")
+    return redirect(url_for("home"))
+   else:
+      # form = BookRequestForm()
+      # if form.validate_on_submit():
+      #   if len(BookIssue.query.filter_by(student_id=current_user.id).all()) == 5:
+      #    flash('You have already borrowed 5 books. Return a Book to request this!', 'danger')
+      #    return redirect(url_for('home'))
+      #   elif len(BookIssue.query.filter_by(student_id=current_user.id,book_id=book_id).all()) > 0:
+      #      flash('You have already borrowed this book!', 'danger')
+      #      return redirect(url_for('home'))
+      #   elif len(BookRequest.query.filter_by(student_id=current_user.id,book_id=book_id).all()) > 0:
+      #      flash('You have already requested this book! Wait for admin approval of previous request.', 'danger')
+      #      return redirect(url_for('home'))
+      #   else:
+      #    request_duration = form.request_duration.data
+      #    student_id = current_user.id
+      #    with app.app_context():
+      #       br = BookRequest(request_duration=request_duration,student_id=student_id, book_id=book_id)
+      #       db.session.add(br)
+      #       db.session.commit()
+      #       flash('Book Requested Successfully!', 'success')
+            # return redirect(url_for('home'))
+      print("Inside request service")
+      return render_template('request_service.html', title="Request this Book", form=form, legend=f'Request {Genre.query.filter_by(id=section_id).first().name} Book - {Book.query.filter_by(id=book_id).first().title} by {Book.query.filter_by(id=book_id).first().author}')
+ 
+
+@app.route("/service/<int:service_id>/delete", methods=['POST'])
+@login_required
+def delete_service(service_id):
+  if current_user.role != "admin":
+    flash(f"Access Denied! You do not have permission to view this page.{current_user.role}", "danger")
+    return redirect(url_for("home"))
+  
+  with app.app_context():
+     service = Service.query.get_or_404(service_id)
+     service_professionals = Service_Professional.query.filter_by(service_id=service_id).all()
+     for service_professional in service_professionals:
+        db.session.delete(service_professional)
+        db.session.commit()
+     db.session.delete(service)
+     db.session.commit()
+     flash('Service Deleted!', 'success')
+     return redirect(url_for('sections'))
+
+
 @app.route("/logout")
 @login_required
 def logout():
@@ -385,20 +503,6 @@ def pending_requests():
 #       return redirect(url_for('student_dash'))
 #    return render_template('search_results_section.html', sections=sections, title='Search by section')
 
-# @app.route("/search-results-title/<query>")
-# @login_required
-# def search_results_title(query):
-#    titles = Book.query.filter(func.lower(Book.title).ilike(f"%{query.lower()}%")).all()
-#    books = [[{'title':book.title, 'author':book.author,'lang': book.lang ,'content':book.content, 'rating':book.rating, 'release_year':book.release_year,'id':book.id},book.genre_id, Genre.query.filter_by(id=book.genre_id).first().name] for book in titles]
-#    if current_user.role == 'student':
-#            for book in books:
-#               if len(BookIssue.query.filter_by(student_id=current_user.id, book_id=book[0].get('id')).all()) <= 0:
-#                  del book[0]['content']
-#    books.sort(key = lambda x: x[0].get('rating'), reverse=True)
-#    if len(books) <= 0:
-#       flash(f'No books found for the query {query}!', 'danger')
-#       return redirect(url_for('student_dash'))
-#    return render_template('search_results_title.html', titles=books, title='Search by book title')
 
 # @app.route("/search-results-author/<query>")
 # @login_required
@@ -446,21 +550,6 @@ def pending_requests():
 
 
 
-# @app.route("/section/<int:section_id>")
-# @login_required
-# def section(section_id):
-#   with app.app_context():
-#     section = Genre.query.get_or_404(section_id)
-#     librarian_username = Librarian.query.filter_by(id=section.librarian_id).first().username
-#   with app.app_context():
-#         books = Book.query.filter_by(genre_id=section_id).all()
-#         books = [{'title':book.title, 'author':book.author, 'lang': book.lang,'content':book.content, 'rating':book.rating, 'release_year':book.release_year,'id':book.id} for book in books]
-#         if current_user.role == 'student':
-#            for book in books:
-#               if len(BookIssue.query.filter_by(student_id=current_user.id, book_id=book.get('id')).all()) <= 0:
-#                  del book['content']
-              
-#   return render_template('section.html', title=section.name, section=section, book_list=books, librarian_username= librarian_username)
 
 # @app.route("/section/<int:section_id>/update", methods=['GET', 'POST'])
 # @login_required
@@ -488,27 +577,7 @@ def pending_requests():
 #     form.date_created.data = section.date_created
 #   return render_template('create_section.html', title='Update Section', section=section, form=form, legend='Update Section')
 
-# @app.route("/section/<int:section_id>/delete", methods=['POST'])
-# @login_required
-# def delete_section(section_id):
-#   if current_user.role != "librarian":
-#     flash(f"Access Denied! You do not have permission to view this page.{current_user.role}", "danger")
-#     return redirect(url_for("home"))
-  
-#   with app.app_context():
-#      section = Genre.query.get_or_404(section_id)
-#      books = Book.query.filter_by(genre_id=section_id).all()
-#      for book in books:
-#         feedbacks = FeedBack.query.filter_by(book_id=book.id).all()
-#         for feedback in feedbacks:
-#            db.session.delete(feedback)
-#            db.session.commit()
-#         db.session.delete(book)
-#         db.session.commit()
-#      db.session.delete(section)
-#      db.session.commit()
-#      flash('Section Deleted!', 'success')
-#      return redirect(url_for('sections'))
+
   
 # @app.route("/section/<int:section_id>/add-book", methods=['GET', 'POST'])
 # @login_required
@@ -586,36 +655,7 @@ def pending_requests():
 #      flash('Book Deleted!', 'success')
 #      return redirect(url_for('section', section_id=section_id))
 
-# @app.route("/section/<int:section_id>/<int:book_id>/request_book", methods=['GET', 'POST'])
-# @login_required
-# def request_book(section_id, book_id):
-#    if current_user.role != 'student':
-#     flash(f"Access Denied! Only Students can request books", "danger")
-#     return redirect(url_for("home"))
-#    else:
-#       form = BookRequestForm()
-#       if form.validate_on_submit():
-#         if len(BookIssue.query.filter_by(student_id=current_user.id).all()) == 5:
-#          flash('You have already borrowed 5 books. Return a Book to request this!', 'danger')
-#          return redirect(url_for('home'))
-#         elif len(BookIssue.query.filter_by(student_id=current_user.id,book_id=book_id).all()) > 0:
-#            flash('You have already borrowed this book!', 'danger')
-#            return redirect(url_for('home'))
-#         elif len(BookRequest.query.filter_by(student_id=current_user.id,book_id=book_id).all()) > 0:
-#            flash('You have already requested this book! Wait for admin approval of previous request.', 'danger')
-#            return redirect(url_for('home'))
-#         else:
-#          request_duration = form.request_duration.data
-#          student_id = current_user.id
-#          with app.app_context():
-#             br = BookRequest(request_duration=request_duration,student_id=student_id, book_id=book_id)
-#             db.session.add(br)
-#             db.session.commit()
-#             flash('Book Requested Successfully!', 'success')
-#             return redirect(url_for('home'))
-
-#       return render_template('request_book.html', title="Request this Book", form=form, legend=f'Request {Genre.query.filter_by(id=section_id).first().name} Book - {Book.query.filter_by(id=book_id).first().title} by {Book.query.filter_by(id=book_id).first().author}')
-   
+  
 # @app.route('/student-requests')
 # @login_required
 # def student_requests():

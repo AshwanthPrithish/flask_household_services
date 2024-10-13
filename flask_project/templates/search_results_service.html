@@ -1,0 +1,24 @@
+{% extends "layout.html" %} {% block content %}
+<h1>Search Results of Service Name</h1>
+
+<div class="container">
+    {% for service in services %}
+    <div class="container">
+        {% if current_user.role == 'customer' %}
+                <div>
+                    <a class="btn btn-secondary btn-sm m-1" href="{{ url_for('request_service', service_id=service.id) }}">Request This Service</a>
+                </div>
+        {% endif %}
+        <b>Name: </b>{{ service['name'] }}<br />
+        <b>Price: </b>{{ service['price'] }}<br />
+        <b>Description: </b>{{ service['description'] }}<br />
+        <br />
+    </div><br/>
+    {% endfor %}
+
+</div>
+
+
+
+
+{% endblock content %}

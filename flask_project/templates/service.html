@@ -1,0 +1,58 @@
+{% extends "layout.html" %} {% block content %}
+<h1>Service Details</h1>
+<div class="container">
+  {% if current_user.role == 'admin' %}
+    <div>
+        <a class="btn btn-secondary btn-sm m-1" href="{{ url_for('update_service', service_id=service.id) }}">Update Service</a>
+        <button type="button" class="btn btn-danger btn-sm m-1" data-toggle="modal" data-target="#deleteModal">Delete Service</button>
+    </div>
+  {% endif %}
+  <b>Section Name:</b> {{ service['name'] }}<br />
+  <b>Section Name:</b> {{ service['price'] }}<br />
+  <b>Description:</b> {{ service['description'] }}<br />
+</div>
+<br />
+<h3>Professionals in {{ service['name'] }} Service</h3>
+{% if offered_by_professionals|length > 0 %}
+<div class="container">
+    {% for professional in offered_by_professionals %}
+    {% if "dummy_professional" not in professional['name'] %}
+        <div class="container">
+            {% if current_user.role == 'customer' %}
+                <div>
+                    <a class="btn btn-secondary btn-sm m-1" href="{{ url_for('request_service', service_id=service.id) }}">Request This Service</a>
+                </div>
+            {% endif %}
+            <b>Name: </b>{{ professional['name'] }}<br />
+            <b>Email: </b>{{ professional['email'] }}<br />
+            <b>Description: </b>{{ professional['description'] }}<br />
+            <b>Experience: </b>{{ professional['experience'] }}<br />
+            <b>Date Created: </b>{{ professional['date_created'] }}<br />
+        </div><br/>
+    {% endif %}
+{% endfor %}
+
+</div>
+{% endif %}
+
+<div class="modal fade" id="deleteModal" tabindex="-1" role="dialog" aria-labelledby="deleteLabel" aria-hidden="true">
+  <div class="modal-dialog" role="document">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="deleteModalLabel">Delete Service?</h5>
+        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+          <span aria-hidden="true">&times;</span>
+        </button>
+      </div>
+      <p>Warning! Deleting the Service will delete all the details of the professionals in this service!</p>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+        <form action="{{ url_for('delete_service', service_id=service.id) }}" method="POST">
+           <input type="submit" class="btn btn-danger" value="Delete" />
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% endblock content %}
