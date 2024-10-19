@@ -33,6 +33,14 @@ def about_us():
 def contact():
   return render_template("contact.html", title="Contact")
 
+
+@app.route("/logout")
+@login_required
+def logout():
+  logout_user()
+  return redirect(url_for('home'))
+
+
 @app.route("/admin-login", methods=['GET', 'POST'])
 def admin_login():
   form = AdminLoginForm()
@@ -133,68 +141,6 @@ def customer_dash():
        flash("Access Denied! You do not have permission to view this page.", "danger")
        return redirect(url_for("home"))
    
-@app.route("/search-results-service/<query>")
-@login_required
-def search_results_service(query):
-   services = Service.query.filter(func.lower(Service.name).ilike(f"%{query.lower()}%")).all()
-   services = [{'id':service.id,'name':service.name, 'price':service.price,'description': service.description }  for service in services]
-   services.sort(key = lambda x: x.get('id'), reverse=False) # type: ignore
-   if len(services) <= 0:
-      flash(f'No services found for the query {query}!', 'danger')
-      return redirect(url_for('home'))
-   return render_template('search_results_service.html', services=services, title='Search by Service Name')
-
-
-@app.route("/search-results-service-professional/<query>")
-@login_required
-def search_results_service_professional(query):
-   service_professionals = Service_Professional.query.filter(func.lower(Service_Professional.username).ilike(f"%{query.lower()}%")).all()
-   service_professionals = [{'id':service_professional.id,'name':service_professional.username, 'email':service_professional.email,'description': service_professional.description, 'experience':service_professional.experience, 'date_created':service_professional.date_created }  for service_professional in service_professionals]
-   service_professionals.sort(key = lambda x: x.get('id'), reverse=False) # type: ignore
-   if len(service_professionals) <= 0:
-      flash(f'No service professionals found for the query {query}!', 'danger')
-      return redirect(url_for('home'))
-   return render_template('search_results_service_professional.html', service_professionals=service_professionals, title='Search by Service Professional Name')
-
-
-@app.route("/sp-login", methods=['GET', 'POST'])
-def sp_login():
-  form = SPLoginForm()
-  if current_user.is_authenticated:
-    if current_user.role == "service_professional":
-       return redirect(url_for('sp_dash'))
-    else:
-       flash(f"Access Denied! You do not have permission to view this page.", "danger")
-       return redirect(url_for("home"))
-  
-  if form.validate_on_submit():
-    service_professional = Service_Professional.query.filter_by(email=form.email.data).first()
-    if service_professional and bcrypt.check_password_hash(service_professional.password, form.password.data):
-      login_user(service_professional, remember=form.remember.data)
-      flash('Login successful', 'success')
-      return redirect(url_for('sp_dash'))
-    else:
-      flash('Login unsuccessful, please check email, and password', 'danger')
-  return render_template("sp_login.html", title="Admin Login", form=form)
-
-
-@app.route("/sp_dash")
-def sp_dash():
-    if current_user.role == "service_professional":
-      form = SearchServiceForm()
-      if form.validate_on_submit():
-        service = form.service.data
-        return redirect(url_for('search_results_service', query=service))
-      
-      form1 = SearchServiceProfessionalForm()
-      if form1.validate_on_submit():
-          service_professional = form1.service_professional.data
-          return redirect(url_for('search_results_service_professional', query=service_professional))
-      return render_template("sp_dashboard.html", title="Service Professional Dashboard", form=form, form1=form1)
-
-    else:
-       flash("Access Denied! You do not have permission to view this page.", "danger")
-       return redirect(url_for("home"))
 
 @app.route("/sp_register",methods=['GET', 'POST'])
 def sp_register():
@@ -218,169 +164,69 @@ def sp_register():
     return render_template("sp_register.html", title="Admin Register", form=form, services=services)
 
 
-@app.route("/remarks")
-def remarks():
-   remarks = Remarks.query.all()
-   f = []
-   for remark in remarks:
-      service_request = Service_Request.query.filter_by(id=remark.service_request_id).first_or_404()
-      service_name = Service.query.filter_by(id=service_request.service_id).first().name # type: ignore
-      service_professional_name, customer_name = Service_Professional.query.filter_by(id=service_request.service_professional_id).first().username, Customer.query.filter_by(id=service_request.customer_id).first().username # type: ignore
-      f.append({'service_name': service_name, 'service_professional_name': service_professional_name, 'customer_name': customer_name, 'remark': remark.remarks})
-   return render_template('view_remarks.html', f_list = f, title="remarks")
-
-
-@app.route("/services")
-@login_required
-def services():
-  with app.app_context():
-     services_ = [i for i in Service.query.all()]
-  return render_template("services.html", service_list=services_, title="Services")
-
-
-@app.route('/customer-requests')
-@login_required
-def customer_requests():
-   if current_user.role != 'customer':
-      flash(f"Access Denied! Only Customers view requested books", "danger")
-      return redirect(url_for("home"))
-   else:
-      service_requests = Service_Request.query.filter_by(customer_id=current_user.id).all() # type: ignore
-      details = []
-      service_name = ""
-      customer_name = ""
-      service_professional_name = ""
-      service_id = ""
-      customer_id = ""
-      service_professional_id = ""
-      service_status = ""
-      date_of_request = ""
-      date_of_completion = ""
-      for service_request in service_requests:
-         service_name = service_request.service.name
-         customer_name = current_user.username
-         service_id = service_request.service.id
-         customer_id = current_user.id
-         service_status = service_request.service_status
-         date_of_request = service_request.date_of_request.strftime("%d-%m-%Y")
-         date_of_completion = service_request.date_of_completion.strftime("%d-%m-%Y")
-
-         if service_request.service_professional_id:
-            service_professional_name = service_request.service_professional.username
-            service_professional_id = service_request.service_professional_id
-
-         details.append({'request_id':service_request.id,'service_name':service_name, 'customer_name': customer_name,'service_professional_name': service_professional_name,'service_id': service_id, 'customer_id': customer_id,'service_professional_id': service_professional_id,'service_status': service_status, 'date_of_request': date_of_request, 'date_of_completion': date_of_completion}) # type: ignore
-         print(details)
-      return render_template('customer_requests.html', requested_services=details, title='Requests')
-
-
-@app.route("/complete-request/<int:request_id>", methods=['GET', 'POST'])
-@login_required
-def mark_request_as_complete(request_id):
-   if current_user.role != "customer":
-      flash(f"Access Denied! You do not have permission to view this page.", "danger")
-      return redirect(url_for("home"))
-   with app.app_context():
-      request = Service_Request.query.filter_by(id=request_id).first()
-      request.service_status = "completed" # type: ignore
-      db.session.commit()
-   flash(f"Marked the service request as complete!", "danger")
-   return redirect(url_for('submit_remarks', request_id=request_id))
-
-
-@app.route("/submit-remarks/<int:request_id>", methods=['GET', 'POST'])
-@login_required
-def submit_remarks(request_id):
-   if current_user.role != "customer":
-      flash(f"Access Denied! You do not have permission to view this page.", "danger")
-      return redirect(url_for("home"))
-   form = RemarkForm()
-   if form.validate_on_submit():
-      remark = Remarks(remarks=form.remark.data, service_request_id=request_id) # type: ignore
-      with app.app_context():
-         db.session.add(remark)
-         db.session.commit()
-      flash(f"Remarks submitted successfully!", "success")
-      return redirect(url_for('home'))
-   return render_template('submit_remark.html', title='Submit Remarks', form=form)
-
-@app.route("/cancel/<int:request_id>", methods=['GET', 'POST'])
-@login_required
-def cancel_request(request_id):
-   if current_user.role != "customer":
-      flash(f"Access Denied! You do not have permission to view this page.", "danger")
-      return redirect(url_for("home"))
-   with app.app_context():
-      request = Service_Request.query.filter_by(id=request_id).first()
-      db.session.delete(request)
-      db.session.commit()
-   flash(f"Cancelled the service request!", "danger")
-   return redirect(url_for('home'))
-
-
-@app.route("/service/new", methods=['GET', 'POST'])
-@login_required
-def new_service():
-  if current_user.role != "admin":
-    flash(f"Access Denied! You do not have permission to view this page.{current_user.role} acc", "danger")
-    return redirect(url_for("home"))
+@app.route("/sp-login", methods=['GET', 'POST'])
+def sp_login():
+  form = SPLoginForm()
+  if current_user.is_authenticated:
+    if current_user.role == "service_professional":
+       return redirect(url_for('sp_dash'))
+    else:
+       flash(f"Access Denied! You do not have permission to view this page.", "danger")
+       return redirect(url_for("home"))
   
-  form = ServiceForm()
   if form.validate_on_submit():
-      if len(Service.query.filter(func.lower(Service.name).ilike(f"%{form.name.data.lower()}%")).all()) > 0:
-           flash('Service with that name already exists!', 'danger')
-           return redirect(url_for('new_service'))
-      service = Service(name=form.name.data, description=form.description.data,price=form.price.data) # type: ignore
-      with app.app_context():
-         db.session.add(service)
-         db.session.commit()
-         flash('The Service has been created!', 'success')
-      return redirect(url_for('services'))
-  return render_template('create_service.html', title="New Service", form=form, legend='New Service')
-  
+    service_professional = Service_Professional.query.filter_by(email=form.email.data).first()
+    if service_professional and bcrypt.check_password_hash(service_professional.password, form.password.data):
+      login_user(service_professional, remember=form.remember.data)
+      flash('Login successful', 'success')
+      return redirect(url_for('sp_dash'))
+    else:
+      flash('Login unsuccessful, please check email, and password', 'danger')
+  return render_template("sp_login.html", title="Admin Login", form=form)
+   
 
-@app.route("/customer-graphs")
+@app.route("/sp_dash")
+def sp_dash():
+    if current_user.role == "service_professional":
+      form = SearchServiceForm()
+      if form.validate_on_submit():
+        service = form.service.data
+        return redirect(url_for('search_results_service', query=service))
+      
+      form1 = SearchServiceProfessionalForm()
+      if form1.validate_on_submit():
+          service_professional = form1.service_professional.data
+          return redirect(url_for('search_results_service_professional', query=service_professional))
+      return render_template("sp_dashboard.html", title="Service Professional Dashboard", form=form, form1=form1)
+
+    else:
+       flash("Access Denied! You do not have permission to view this page.", "danger")
+       return redirect(url_for("home"))
+
+
+@app.route("/search-results-service/<query>")
 @login_required
-def customer_graphs():
-  #  if current_user.role == 'librarian':
-  #     flash("Access Denied! You do not have permission to view this page.", "danger")
-  #     return redirect(url_for("home"))
-  #  issued_books = BookIssue.query.filter_by(student_id=current_user.id).all()
-  #  values = [k.name for i in issued_books for j in Book.query.filter_by(id=i.book_id).all() for k in Genre.query.filter_by(id=j.genre_id).all()]
-  #  value_counts = {}
-  #  for value in values:
-  #     value_counts[value] = value_counts.get(value, 0) + 1
+def search_results_service(query):
+   services = Service.query.filter(func.lower(Service.name).ilike(f"%{query.lower()}%")).all()
+   services = [{'id':service.id,'name':service.name, 'price':service.price,'description': service.description }  for service in services]
+   services.sort(key = lambda x: x.get('id'), reverse=False) # type: ignore
+   if len(services) <= 0:
+      flash(f'No services found for the query {query}!', 'danger')
+      return redirect(url_for('home'))
+   return render_template('search_results_service.html', services=services, title='Search by Service Name')
 
-  #  # Pie chart
-  #  plt.figure(figsize=(8, 8))
-  #  plt.pie(value_counts.values(), labels=value_counts.keys(), autopct='%1.1f%%', startangle=140)
-  #  plt.axis('equal')
-  #  plt.title('Distribution of Genres in Issued Books')
-  #  picture_path = os.path.join(app.root_path, f'static/graphs/one.png')
-  #  plt.savefig(picture_path)
-  #  plt.close()
 
-  #  image = save_graph(picture_path, 'student')
-  #  image_url = url_for('static', filename='graphs/' + image)
+@app.route("/search-results-service-professional/<query>")
+@login_required
+def search_results_service_professional(query):
+   service_professionals = Service_Professional.query.filter(func.lower(Service_Professional.username).ilike(f"%{query.lower()}%")).all()
+   service_professionals = [{'id':service_professional.id,'name':service_professional.username, 'email':service_professional.email,'description': service_professional.description, 'experience':service_professional.experience, 'date_created':service_professional.date_created }  for service_professional in service_professionals]
+   service_professionals.sort(key = lambda x: x.get('id'), reverse=False) # type: ignore
+   if len(service_professionals) <= 0:
+      flash(f'No service professionals found for the query {query}!', 'danger')
+      return redirect(url_for('home'))
+   return render_template('search_results_service_professional.html', service_professionals=service_professionals, title='Search by Service Professional Name')
 
-  #  genres = [i.name for i in Genre.query.all()]
-  #  value_counts = {}
-  #  for value in genres:
-  #     value_counts[value] = value_counts.get(value, 0) + 1
-
-  #  # Pie chart
-  #  plt.figure(figsize=(8, 8))
-  #  plt.pie(value_counts.values(), labels=value_counts.keys(), autopct='%1.1f%%', startangle=140)
-  #  plt.axis('equal')
-  #  plt.title('Distribution of Genres Available')
-  #  picture_path = os.path.join(app.root_path, f'static/graphs/two.png')
-  #  plt.savefig(picture_path)
-  #  plt.close()
-
-  #  image1 = save_graph(picture_path, 'all')
-  #  image_url1 = url_for('static', filename='graphs/' + image1)
-
-   return render_template('home.html', image="", image1="", title="Graph")
 
 def save_picture(form_picture, role):
    random_hex = secrets.token_hex(8)
@@ -456,8 +302,60 @@ def account():
   else:
         flash(f"Access Denied! You do not have permission to view this page.{current_user.role} acc", "danger")
         return redirect(url_for("home"))
+
+
+@app.route("/services")
+@login_required
+def services():
+  with app.app_context():
+     services_ = [i for i in Service.query.all()]
+  return render_template("services.html", service_list=services_, title="Services")
+
+
+@app.route("/service/new", methods=['GET', 'POST'])
+@login_required
+def new_service():
+  if current_user.role != "admin":
+    flash(f"Access Denied! You do not have permission to view this page.{current_user.role} acc", "danger")
+    return redirect(url_for("home"))
+  
+  form = ServiceForm()
+  if form.validate_on_submit():
+      if len(Service.query.filter(func.lower(Service.name).ilike(f"%{form.name.data.lower()}%")).all()) > 0:
+           flash('Service with that name already exists!', 'danger')
+           return redirect(url_for('new_service'))
+      service = Service(name=form.name.data, description=form.description.data,price=form.price.data) # type: ignore
+      with app.app_context():
+         db.session.add(service)
+         db.session.commit()
+         flash('The Service has been created!', 'success')
+      return redirect(url_for('services'))
+  return render_template('create_service.html', title="New Service", form=form, legend='New Service')
   
 
+
+@app.route("/service/<int:service_id>/delete", methods=['POST'])
+@login_required
+def delete_service(service_id):
+  if current_user.role != "admin":
+    flash(f"Access Denied! You do not have permission to view this page.{current_user.role}", "danger")
+    return redirect(url_for("home"))
+  
+  with app.app_context():
+     service = Service.query.get_or_404(service_id)
+     service_requests = Service_Request.query.filter_by(service_id=service_id).all()
+     for service_request in service_requests:
+        db.session.delete(service_request)
+        db.session.commit()
+     service_professionals = Service_Professional.query.filter_by(service_id=service_id).all()
+     for service_professional in service_professionals:
+        db.session.delete(service_professional)
+        db.session.commit()
+     db.session.delete(service)
+     db.session.commit()
+     flash('Service Deleted!', 'success')
+     return redirect(url_for('sections'))
+  
 @app.route("/service/<int:service_id>")
 @login_required
 def service(service_id):
@@ -468,7 +366,7 @@ def service(service_id):
         offered_by_professionals = [{"name":professional.username, "email":professional.email, "description":professional.description, "experience": professional.experience, "date_created":professional.date_created} for professional in offered_by_professionals]
   return render_template('service.html', name=service.name, service=service, offered_by_professionals=offered_by_professionals)
 
-
+ 
 def duration_to_timedelta(st):
     s = 0
     pattern = re.compile(r'(\d+)\s*([a-zA-Z]+)')
@@ -484,6 +382,7 @@ def duration_to_timedelta(st):
        elif j == 'weeks' or j == 'week':
           s += (i * 60 * 60 * 24 * 7)
     return timedelta(seconds=s)
+
 
 @app.route("/service/<int:service_id>/request_service", methods=['GET', 'POST'])
 @login_required
@@ -533,31 +432,134 @@ def request_service(service_id):
       return render_template('add_service_request.html', title="Request this service", form=form)
  
 
-@app.route("/service/<int:service_id>/delete", methods=['POST'])
+
+@app.route("/complete-request/<int:request_id>", methods=['GET', 'POST'])
 @login_required
-def delete_service(service_id):
-  if current_user.role != "admin":
-    flash(f"Access Denied! You do not have permission to view this page.{current_user.role}", "danger")
-    return redirect(url_for("home"))
-  
-  with app.app_context():
-     service = Service.query.get_or_404(service_id)
-     service_professionals = Service_Professional.query.filter_by(service_id=service_id).all()
-     for service_professional in service_professionals:
-        db.session.delete(service_professional)
-        db.session.commit()
-     db.session.delete(service)
-     db.session.commit()
-     flash('Service Deleted!', 'success')
-     return redirect(url_for('sections'))
+def mark_request_as_complete(request_id):
+   if current_user.role != "customer":
+      flash(f"Access Denied! You do not have permission to view this page.", "danger")
+      return redirect(url_for("home"))
+   with app.app_context():
+      request = Service_Request.query.filter_by(id=request_id).first()
+      request.service_status = "completed" # type: ignore
+      db.session.commit()
+   flash(f"Marked the service request as complete!", "danger")
+   return redirect(url_for('submit_remarks', request_id=request_id))
 
 
-@app.route("/logout")
+@app.route("/submit-remarks/<int:request_id>", methods=['GET', 'POST'])
 @login_required
-def logout():
-  logout_user()
-  return redirect(url_for('home'))
+def submit_remarks(request_id):
+   if current_user.role != "customer":
+      flash(f"Access Denied! You do not have permission to view this page.", "danger")
+      return redirect(url_for("home"))
+   form = RemarkForm()
+   if form.validate_on_submit():
+      remark = Remarks(remarks=form.remark.data, service_request_id=request_id) # type: ignore
+      with app.app_context():
+         db.session.add(remark)
+         db.session.commit()
+      flash(f"Remarks submitted successfully!", "success")
+      return redirect(url_for('home'))
+   return render_template('submit_remark.html', title='Submit Remarks', form=form)
 
+@app.route("/cancel/<int:request_id>", methods=['GET', 'POST'])
+@login_required
+def cancel_request(request_id):
+   if current_user.role != "customer":
+      flash(f"Access Denied! You do not have permission to view this page.", "danger")
+      return redirect(url_for("home"))
+   with app.app_context():
+      request = Service_Request.query.filter_by(id=request_id).first()
+      db.session.delete(request)
+      db.session.commit()
+   flash(f"Cancelled the service request!", "danger")
+   return redirect(url_for('home'))
+
+
+@app.route('/customer-requests')
+@login_required
+def customer_requests():
+   if current_user.role != 'customer':
+      flash(f"Access Denied! Only Customers view requested books", "danger")
+      return redirect(url_for("home"))
+   else:
+      service_requests = Service_Request.query.filter_by(customer_id=current_user.id).all() # type: ignore
+      details = []
+      service_name = ""
+      customer_name = ""
+      service_professional_name = ""
+      service_id = ""
+      customer_id = ""
+      service_professional_id = ""
+      service_status = ""
+      date_of_request = ""
+      date_of_completion = ""
+      for service_request in service_requests:
+         service_name = service_request.service.name
+         customer_name = current_user.username
+         service_id = service_request.service.id
+         customer_id = current_user.id
+         service_status = service_request.service_status
+         date_of_request = service_request.date_of_request.strftime("%d-%m-%Y")
+         date_of_completion = service_request.date_of_completion.strftime("%d-%m-%Y")
+
+         if service_request.service_professional_id:
+            service_professional_name = service_request.service_professional.username
+            service_professional_id = service_request.service_professional_id
+
+         details.append({'request_id':service_request.id,'service_name':service_name, 'customer_name': customer_name,'service_professional_name': service_professional_name,'service_id': service_id, 'customer_id': customer_id,'service_professional_id': service_professional_id,'service_status': service_status, 'date_of_request': date_of_request, 'date_of_completion': date_of_completion}) # type: ignore
+      return render_template('customer_requests.html', requested_services=details, title='Requests')
+
+
+
+
+
+
+@app.route("/customer-graphs")
+@login_required
+def customer_graphs():
+  #  if current_user.role == 'librarian':
+  #     flash("Access Denied! You do not have permission to view this page.", "danger")
+  #     return redirect(url_for("home"))
+  #  issued_books = BookIssue.query.filter_by(student_id=current_user.id).all()
+  #  values = [k.name for i in issued_books for j in Book.query.filter_by(id=i.book_id).all() for k in Genre.query.filter_by(id=j.genre_id).all()]
+  #  value_counts = {}
+  #  for value in values:
+  #     value_counts[value] = value_counts.get(value, 0) + 1
+
+  #  # Pie chart
+  #  plt.figure(figsize=(8, 8))
+  #  plt.pie(value_counts.values(), labels=value_counts.keys(), autopct='%1.1f%%', startangle=140)
+  #  plt.axis('equal')
+  #  plt.title('Distribution of Genres in Issued Books')
+  #  picture_path = os.path.join(app.root_path, f'static/graphs/one.png')
+  #  plt.savefig(picture_path)
+  #  plt.close()
+
+  #  image = save_graph(picture_path, 'student')
+  #  image_url = url_for('static', filename='graphs/' + image)
+
+  #  genres = [i.name for i in Genre.query.all()]
+  #  value_counts = {}
+  #  for value in genres:
+  #     value_counts[value] = value_counts.get(value, 0) + 1
+
+  #  # Pie chart
+  #  plt.figure(figsize=(8, 8))
+  #  plt.pie(value_counts.values(), labels=value_counts.keys(), autopct='%1.1f%%', startangle=140)
+  #  plt.axis('equal')
+  #  plt.title('Distribution of Genres Available')
+  #  picture_path = os.path.join(app.root_path, f'static/graphs/two.png')
+  #  plt.savefig(picture_path)
+  #  plt.close()
+
+  #  image1 = save_graph(picture_path, 'all')
+  #  image_url1 = url_for('static', filename='graphs/' + image1)
+
+   return render_template('home.html', image="", image1="", title="Graph")
+
+ 
 
 @app.route("/sp-graphs")
 @login_required
