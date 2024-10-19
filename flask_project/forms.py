@@ -136,10 +136,9 @@ class ServiceRequestForm(FlaskForm):
 #     request_duration = StringField('Period of Borrowing/days/weeks):(Eg: Enter "7 hours,6 days, 8 weeks" to borrow for 7 hours, 6 days, and 8 weeks', validators=[DataRequired()])
 #     submit = SubmitField()
 
-# class FeedBackForm(FlaskForm):
-#     feedback = StringField('Feedback for Book', validators=[DataRequired()])
-#     skipper = BooleanField('Skip Feedback?')
-#     submit = SubmitField()
+class RemarkForm(FlaskForm):
+    remark = StringField('Remark for Service', validators=[DataRequired()])
+    submit = SubmitField()
 
 class SearchServiceForm(FlaskForm):
     service = StringField('Enter the service to search for:', validators=[DataRequired()])

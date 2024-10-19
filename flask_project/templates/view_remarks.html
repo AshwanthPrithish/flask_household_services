@@ -2,10 +2,10 @@
 <h1>View Remarks of Services</h1>
 {% for data in f_list %}
 <div class="container">
-   <b>Service Name: </b>{{ data[0] }}<br />
-   <b>Service Professional Name: </b>{{ data[1] }}<br />
-   <b>Remarks: </b>{{ data[2] }}<br />
-   <b>Remark provided by: </b>{{ data[3] }}<br />
+   <b>Service Name: </b>{{ data['service_name'] }}<br />
+   <b>Service Professional Name: </b>{{ data['service_professional_name'] }}<br />
+   <b>Remarks: </b>{{ data['remark'] }}<br />
+   <b>Remark provided by: </b>{{ data['customer_name'] }}<br />
    <br/>
    </div>
 {% endfor %}

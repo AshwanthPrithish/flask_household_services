@@ -1,11 +1,65 @@
 {% extends "layout.html" %} {% block content %}
 <h1>My Requests</h1>
-{% for request in requested_books %}
+{% for request in requested_services %}
    <div class="container">
-   <b>Title: </b>{{ request[0] }}<br />
-   <b>Request Duration: </b>{{ request[1] }}<br />
-   <b>Request Status: </b>Pending Approval<br />
+      {% if request['service_status'] == 'assigned' %}
+         <div>
+            <button type="button" class="btn btn-secondary btn-sm m-1" data-toggle="modal" data-target="#o{{ request['request_id'] }}one">Mark Request as Complete</button>
+         </div>
+      {% elif request['service_status'] == 'requested' %}
+         <div>
+            <button type="button" class="btn btn-secondary btn-sm m-1" data-toggle="modal" data-target="#t{{ request['request_id'] }}two">Cancel Service Request</button>
+         </div>
+      {% endif %}
+   <b>Service Name: </b>{{ request['service_name'] }}<br />
+   <b>Customer Name: </b>{{ request['customer_name'] }}<br />
+   {% if request['service_professional_name']|length > 0 %}
+         <b>Service Professional Name: </b>{{ request['service_professional_name'] }}<br />
+   {% endif %}
+   <b>Service Status: </b>{{ request['service_status'] }}<br />
+   <b>Date of Request: </b>{{ request['date_of_request'] }}<br />
+   <b>Date of Completion: </b>{{ request['date_of_completion'] }}<br />
    <br/>
    </div>
+
+   <div class="modal fade" id="o{{ request['request_id'] }}one" tabindex="-1" role="dialog" aria-labelledby="one" aria-hidden="true">
+      <div class="modal-dialog" role="document">
+          <div class="modal-content">
+          <div class="modal-header">
+              <h5 class="modal-title" id="oneTitle">Mark Request As Complete?</h5>
+              <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+              <span aria-hidden="true">&times;</span>
+              </button>
+          </div>
+          <p style="margin-left: 5px;">Mark Request As Complete <b>({{ request['service_name'] }})</b></p>
+          <div class="modal-footer">
+              <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+              <form action="{{ url_for('mark_request_as_complete', request_id=request['request_id']) }}" method="POST">
+              <input type="submit" class="btn btn-danger" value="Proceed" />
+              </form>
+          </div>
+          </div>
+      </div>
+   </div>
+
+   <div class="modal fade" id="t{{ request['request_id'] }}two" tabindex="-1" role="dialog" aria-labelledby="one" aria-hidden="true">
+      <div class="modal-dialog" role="document">
+          <div class="modal-content">
+          <div class="modal-header">
+              <h5 class="modal-title" id="oneTitle">Cancel Request?</h5>
+              <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+              <span aria-hidden="true">&times;</span>
+              </button>
+          </div>
+          <p style="margin-left: 5px;">Cancel Request?<b>({{ request['service_name'] }})</b></p>
+          <div class="modal-footer">
+              <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+              <form action="{{ url_for('cancel_request', request_id=request['request_id']) }}" method="POST">
+              <input type="submit" class="btn btn-danger" value="Proceed" />
+              </form>
+          </div>
+          </div>
+      </div>
+  </div>
 {% endfor %}
 {% endblock content %}
