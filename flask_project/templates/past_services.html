@@ -1,0 +1,16 @@
+{% extends "layout.html" %} {% block content %}
+<h1>Past/Closed Requests</h1>
+{% for request in past_services %}
+<div class="container">
+   <b>Service Name: </b>{{ request['service']['name'] }}<br />
+   {% if current_user.role == "service_professional" %}<b>Customer Name: </b>{{ request['customer']['username'] }}<br />
+   {% else %}<b>Service Professional Name: </b>{{ request['service_professional']['username'] }}<br />
+   {% endif %}
+   <b>Date of Request: </b>{{ request['date_of_request'].strftime("%d-%m-%Y") }}<br />
+   <b>Date of Completion: </b>{{ request['date_of_completion'].strftime("%d-%m-%Y") }}<br />
+   <br/>
+   </div>
+{% endfor %}
+{% endblock content %}
+
+

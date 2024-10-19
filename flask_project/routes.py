@@ -393,13 +393,13 @@ def request_service(service_id):
    else:
       form = ServiceRequestForm()
       if form.validate_on_submit():
-        if len(Service_Request.query.filter(Service_Request.customer_id==current_user.id,  func.lower(Service_Request.service_status) != "COMPLETED".lower()).all()) == 5:
+        if len(Service_Request.query.filter(Service_Request.customer_id==current_user.id,  func.lower(Service_Request.service_status) != "completed".lower()).all()) == 5:
          flash('You have already requested 5 services. Mark a service as complete to request this!', 'danger')
          return redirect(url_for('home'))
-        elif len(Service_Request.query.filter(Service_Request.customer_id==current_user.id, Service_Request.service_id==service_id).all()) > 0:
+        elif len(Service_Request.query.filter(Service_Request.customer_id==current_user.id, Service_Request.service_id==service_id, Service_Request.service_status!="completed").all()) > 0:
            flash('You have already requested this service!', 'danger')
            return redirect(url_for('home'))
-        elif len(Service_Request.query.filter(Service_Request.customer_id==current_user.id,Service_Request.service_id==service_id).all()) > 0 and Service_Request.query.filter_by(customer_id=current_user.id,service_id=service_id).first().service_status == "YET_TO_ASSIGN":
+        elif len(Service_Request.query.filter(Service_Request.customer_id==current_user.id,Service_Request.service_id==service_id).all()) > 0 and Service_Request.query.filter_by(customer_id=current_user.id,service_id=service_id).first().service_status == "requested": # type: ignore
            flash('You have already requested this service! Wait for admin approval of previous request.', 'danger')
            return redirect(url_for('home'))
         else:
@@ -408,29 +408,13 @@ def request_service(service_id):
          td = duration_to_timedelta(duration)
          date_of_completion = form.date_of_request.data + td
          with app.app_context():
-            free_service_professionals = []
-            for service_professional in Service_Professional.query.filter_by(service_id=service_id):
-               if service_professional.service_requests:
-                  for service_request in service_professional.service_requests:
-                     if service_request.service_status != "assigned" and service_request.date_of_completion < datetime.now():
-                        free_service_professionals.append(service_professional)
-               else:
-                  free_service_professionals.append(service_professional)
-            
-            if free_service_professionals:
-               to_be_assigned = free_service_professionals.pop(0)
-               status = "assigned"
-               br = Service_Request(date_of_request=form.date_of_request.data, service_professional_id=to_be_assigned.id,customer_id=customer_id, service_id=service_id, date_of_completion=date_of_completion, service_status=status)
-            else:
-               status = "requested"
-               br = Service_Request(date_of_request=form.date_of_request.data ,customer_id=customer_id, service_id=service_id, date_of_completion=date_of_completion, service_status=status)
-
+            status = "requested"
+            br = Service_Request(date_of_request=form.date_of_request.data ,customer_id=customer_id, service_id=service_id, date_of_completion=date_of_completion, service_status=status) # type: ignore
             db.session.add(br)
             db.session.commit()
             flash('Service Requested Successfully!', 'success')
             return redirect(url_for('home'))
       return render_template('add_service_request.html', title="Request this service", form=form)
- 
 
 
 @app.route("/complete-request/<int:request_id>", methods=['GET', 'POST'])
@@ -462,6 +446,17 @@ def submit_remarks(request_id):
       flash(f"Remarks submitted successfully!", "success")
       return redirect(url_for('home'))
    return render_template('submit_remark.html', title='Submit Remarks', form=form)
+
+@app.route("/remarks")
+def remarks():
+   remarks = Remarks.query.all()
+   f = []
+   for remark in remarks:
+      service_request = Service_Request.query.filter_by(id=remark.service_request_id).first_or_404()
+      service_name = Service.query.filter_by(id=service_request.service_id).first().name # type: ignore
+      service_professional_name, customer_name = Service_Professional.query.filter_by(id=service_request.service_professional_id).first().username, Customer.query.filter_by(id=service_request.customer_id).first().username # type: ignore
+      f.append({'service_name': service_name, 'service_professional_name': service_professional_name, 'customer_name': customer_name, 'remark': remark.remarks})
+   return render_template('view_remarks.html', f_list = f, title="remarks")
 
 @app.route("/cancel/<int:request_id>", methods=['GET', 'POST'])
 @login_required
@@ -505,16 +500,86 @@ def customer_requests():
          date_of_completion = service_request.date_of_completion.strftime("%d-%m-%Y")
 
          if service_request.service_professional_id:
+            print(service_request.id)
             service_professional_name = service_request.service_professional.username
             service_professional_id = service_request.service_professional_id
+         else:
+            service_professional_name = ""
+            service_professional_id = ""
 
          details.append({'request_id':service_request.id,'service_name':service_name, 'customer_name': customer_name,'service_professional_name': service_professional_name,'service_id': service_id, 'customer_id': customer_id,'service_professional_id': service_professional_id,'service_status': service_status, 'date_of_request': date_of_request, 'date_of_completion': date_of_completion}) # type: ignore
       return render_template('customer_requests.html', requested_services=details, title='Requests')
 
 
 
+@app.route('/pending-requests')
+@login_required
+def pending_requests():
+   if current_user.role != "service_professional":
+     flash(f"Access Denied! You do not have permission to view this page.{current_user.role}", "danger")
+     return redirect(url_for("home"))
+   
+   requests = Service_Request.query.filter_by(service_status="requested").all()
+   details = []
+   service_name = ""
+   customer_name = ""
+   service_id = ""
+   customer_id = ""
+   service_status = ""
+   date_of_request = ""
+   date_of_completion = ""
+   for service_request in requests:
+         service_name = service_request.service.name
+         customer_name = service_request.customer.username
+         service_id = service_request.service.id
+         customer_id = current_user.id
+         service_status = service_request.service_status
+         date_of_request = service_request.date_of_request.strftime("%d-%m-%Y")
+         date_of_completion = service_request.date_of_completion.strftime("%d-%m-%Y")
+
+         details.append({'request_id':service_request.id,'service_name':service_name, 'customer_name': customer_name,'service_id': service_id, 'customer_id': customer_id,'service_status': service_status, 'date_of_request': date_of_request, 'date_of_completion': date_of_completion}) # type: ignore
+   return render_template('pending_requests.html', title="Pending Requests", requests=details)
+   
 
 
+@app.route('/accept-request/<int:request_id>/<int:service_professional_id>', methods=['GET', 'POST'])
+@login_required
+def accept_request(request_id, service_professional_id):
+   if current_user.role != "service_professional":
+     flash(f"Access Denied! You do not have permission to view this page.{current_user.role}", "danger")
+     return redirect(url_for("home"))
+   
+   with app.app_context():
+      request = Service_Request.query.filter_by(id=request_id).first()
+      request.service_professional_id = service_professional_id # type: ignore
+      request.service_professional = Service_Professional.query.filter_by(id=service_professional_id).first()  # type: ignore
+      request.service_status = "assigned" # type: ignore
+      db.session.commit()
+   flash(f"Accepted Service", "success")
+   return redirect(url_for("home"))
+
+@app.route('/reject-request/<int:request_id>/<int:service_professional_id>', methods=['GET','POST'])
+@login_required
+def reject_request():
+   if current_user.role != "service_professional":
+     flash(f"Access Denied! You do not have permission to view this page.{current_user.role}", "danger")
+     return redirect(url_for("home"))
+   flash(f"Accepted Service", "success")
+   return redirect(url_for("home"))
+
+
+@app.route('/past-services')
+@login_required
+def past_services():
+   if current_user.role != 'admin':
+      if current_user.role == "customer":
+         past_services = Service_Request.query.filter_by(customer_id=current_user.id, service_status="completed").all()
+      else:
+         past_services = Service_Request.query.filter_by(service_professional_id=current_user.id, service_status="completed").all()
+      return render_template("past_services.html", past_services=past_services)
+   else:
+      flash("Access Denied", "danger")
+      return redirect(url_for("home"))
 
 @app.route("/customer-graphs")
 @login_required
@@ -604,19 +669,6 @@ def sp_graphs():
 #    image_url1 = url_for('static', filename='graphs/' + image1)
 
 #    return render_template('graph.html', image=image_url, image1=image_url1, title="Graph")
-
-
-@app.route('/pending-requests')
-@login_required
-def pending_requests():
-   if current_user.role != "customer":
-     flash(f"Access Denied! You do not have permission to view this page.{current_user.role}", "danger")
-     return redirect(url_for("home"))
-   
-   requests = Service_Request.query.filter_by(customer_id=current_user.id, service_status="requested").all()
-   return render_template('pending_requests.html', title="Pending Requests", requests=requests)
-   
-
 
 
 

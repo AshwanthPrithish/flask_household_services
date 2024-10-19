@@ -44,15 +44,21 @@
                    <li class="nav-item">
                       <a class="nav-link" href="{{ url_for('customer_requests') }}">View Requested Services</a>
                    </li>
+                   <li>
+                    <a class="nav-link" href="{{ url_for('past_services') }}">View Past Services</a>
+                  </li>
                    {% elif current_user.role == 'service_professional' %}
                     <li class="nav-item">
                       <a class="nav-link" href="{{ url_for('sp_dash') }}">Dashboard</a>
                     </li>
                     <li class="nav-item">
-                      <a class="nav-link" href="{{ url_for('sp_graphs') }}">View Library Graphs</a>
+                      <a class="nav-link" href="{{ url_for('sp_graphs') }}">View Service Professional Graphs</a>
                     </li>
                     <li>
                         <a class="nav-link" href="{{ url_for('pending_requests') }}">Pending Requests</a>
+                    </li>
+                    <li>
+                      <a class="nav-link" href="{{ url_for('past_services') }}">View Past Services</a>
                     </li>
                   {% else %}
                   <li>
