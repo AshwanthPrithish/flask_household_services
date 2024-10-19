@@ -1,0 +1,14 @@
+{% extends "layout.html" %} {% block content %}
+<h1>All Customers</h1>
+{% for customer in customers %}
+<div class="container">
+   <b>Customer Name: </b>{{ customer['username'] }}<br />
+   <b>Email: </b>{{ customer['email'] }}<br />
+   <b>Address: </b>{{ customer['address'] }}<br />
+   <b>Contact: </b>{{ customer['contact'] }}<br />
+   <br/>
+   </div>
+{% endfor %}
+{% endblock content %}
+
+

@@ -107,6 +107,12 @@ class UpdateSPAccount(FlaskForm):
                 raise ValidationError('That email already exits. Try another one.')
 
 
+class UpdateServiceForm(FlaskForm):
+    name = StringField('Name', validators=[DataRequired()])
+    price = StringField('Price', validators=[DataRequired()])
+    description = TextAreaField('Description', validators=[DataRequired()])
+    submit = SubmitField()
+
 class ServiceForm(FlaskForm):
     name = StringField('Name', validators=[DataRequired()])
     price = StringField('Price', validators=[DataRequired()])

@@ -11,10 +11,10 @@ from datetime import datetime, timedelta
 from PIL import Image
 from flask import render_template,flash, redirect, url_for, request, make_response, jsonify
 from flask_project import app, db, bcrypt
-from flask_project.forms import AdminLoginForm, RegistrationForm, LoginForm, RemarkForm, SPLoginForm, SPRegistrationForm, SearchServiceForm, SearchServiceProfessionalForm, ServiceForm, ServiceRequestForm, UpdateCustomerAccount, UpdateSPAccount
+from flask_project.forms import AdminLoginForm, RegistrationForm, LoginForm, RemarkForm, SPLoginForm, SPRegistrationForm, SearchServiceForm, SearchServiceProfessionalForm, ServiceForm, ServiceRequestForm, UpdateCustomerAccount, UpdateSPAccount, UpdateServiceForm
 from flask_project.models import Admin, Customer, Service_Professional, Service, Service_Request, Remarks
 from flask_login import login_user, current_user, logout_user, login_required
-from sqlalchemy import func
+from sqlalchemy import func, not_
 from flask_project.auth_middleware import token_required
 
 with app.app_context():
@@ -74,12 +74,44 @@ def admin_dash():
       if form1.validate_on_submit():
           service_professional = form1.service_professional.data
           return redirect(url_for('search_results_service_professional', query=service_professional))
-      return render_template("admin_dashboard.html", title="Admin Dashboard")
+      return render_template("admin_dashboard.html", title="Admin Dashboard", form=form, form1=form1)
 
    else:
        flash("Access Denied! You do not have permission to view this page.", "danger")
        return redirect(url_for("home"))
+   
 
+@app.route("/view_customers")
+@login_required
+def view_customers():
+   if current_user.role == "admin":
+      customers = Customer.query.filter(not_(Customer.username.ilike('%dummy%'))).all()
+      return render_template("view_customers.html", title="View Customers", customers=customers)
+   else:
+       flash("Access Denied! You do not have permission to view this page.", "danger")
+       return redirect(url_for("home"))
+
+
+@app.route("/view_service_professionals")
+@login_required
+def view_service_professionals():
+   if current_user.role == "admin":
+      service_professionals =  Service_Professional.query.filter(not_(Service_Professional.username.ilike('%dummy%'))).all()
+      return render_template("view_service_professionals.html", title="View Service Professionals", service_professionals=service_professionals)
+   else:
+       flash("Access Denied! You do not have permission to view this page.", "danger")
+       return redirect(url_for("home"))
+   
+
+@app.route("/view_service_requests")
+@login_required
+def view_service_requests():
+   if current_user.role == "admin":
+      service_requests = Service_Request.query.all()
+      return render_template("view_service_requests.html", title="View Service Requests", service_requests=service_requests)
+   else:
+       flash("Access Denied! You do not have permission to view this page.", "danger")
+       return redirect(url_for("home"))
 
 @app.route("/register", methods=['GET', 'POST'])
 def register():
@@ -332,7 +364,24 @@ def new_service():
       return redirect(url_for('services'))
   return render_template('create_service.html', title="New Service", form=form, legend='New Service')
   
-
+@app.route("/service/<int:service_id>/update", methods=['GET', 'POST'])
+@login_required
+def update_service(service_id):
+   if current_user.role != "admin":
+    flash(f"Access Denied! You do not have permission to view this page.{current_user.role}", "danger")
+    return redirect(url_for("home"))
+   else:
+      form=UpdateServiceForm()
+      service = Service.query.get_or_404(service_id)
+      if form.validate_on_submit():
+         service.name = form.name.data
+         service.description = form.description.data
+         service.price = form.price.data
+         with app.app_context():
+            db.session.commit()
+            flash('Service updated!', 'success')
+         return redirect(url_for('services'))
+      return render_template("update_service.html", form=form)
 
 @app.route("/service/<int:service_id>/delete", methods=['POST'])
 @login_required
@@ -580,6 +629,16 @@ def past_services():
    else:
       flash("Access Denied", "danger")
       return redirect(url_for("home"))
+   
+def save_graph(filename, role):
+   _, ext = os.path.splitext(filename)
+   picture_fn = f"{role}_available" + ext
+   picture_path = os.path.join(app.root_path, f'static/graphs', picture_fn)
+   
+   i = Image.open(filename)
+   i.save(picture_path)
+   
+   return picture_fn
 
 @app.route("/customer-graphs")
 @login_required
@@ -671,177 +730,6 @@ def sp_graphs():
 #    return render_template('graph.html', image=image_url, image1=image_url1, title="Graph")
 
 
-
-# @app.route("/section/<int:section_id>/update", methods=['GET', 'POST'])
-# @login_required
-# def update_section(section_id):
-#   if current_user.role != "librarian":
-#     flash(f"Access Denied! You do not have permission to view this page.{current_user.role} acc", "danger")
-#     return redirect(url_for("home"))
-  
-#   section = Genre.query.get_or_404(section_id)
-#   form = SectionForm()
-#   if form.validate_on_submit():
-#      if section.name.lower() != form.title.data.lower() and len(Genre.query.filter(func.lower(Genre.name).ilike(f"%{form.title.data.lower()}%")).all()) > 0:
-#            flash('Section with that name already exists!', 'danger')
-#            return redirect(url_for('update_section', section_id=section_id))
-#      section.name = form.title.data
-#      section.description = form.content.data
-#      section.date_created = form.date_created.data
-#      section.librarian_id = current_user.id
-#      db.session.commit()
-#      flash(f'Updated the Section successfully', 'success')
-#      return redirect(url_for('section', section_id=section.id))
-#   elif request.method == 'GET':
-#     form.title.data = section.name
-#     form.content.data = section.description
-#     form.date_created.data = section.date_created
-#   return render_template('create_section.html', title='Update Section', section=section, form=form, legend='Update Section')
-
-
-
-# @app.route("/section/<int:section_id>/<int:book_id>/delete", methods=['POST'])
-# @login_required
-# def delete_book(section_id, book_id):
-#   if current_user.role != "librarian":
-#     flash(f"Access Denied! You do not have permission to view this page.{current_user.role}", "danger")
-#     return redirect(url_for("home"))
-  
-#   with app.app_context():
-#      book = Book.query.get_or_404(book_id)
-     
-#      feedbacks = FeedBack.query.filter_by(book_id=book_id).all()
-#      for feedback in feedbacks:
-#            db.session.delete(feedback)
-#            db.session.commit()
-     
-#      db.session.delete(book)
-#      db.session.commit()
-#      flash('Book Deleted!', 'success')
-#      return redirect(url_for('section', section_id=section_id))
-
-  
-# @app.route('/student-requests')
-# @login_required
-# def student_requests():
-#    if current_user.role == 'librarian':
-#       flash(f"Access Denied! Only Students view requested books", "danger")
-#       return redirect(url_for("home"))
-#    else:
-#       requested_books = BookRequest.query.filter_by(student_id=current_user.id).all()
-#       details = [[Book.query.filter_by(id=x.book_id).first().title, BookRequest.query.filter_by(id=x.id).first().request_duration] for x in requested_books]
-#    return render_template('student_requests.html', requested_books=details, title='Requests')
-
-
-  
-
-
-
-# @app.route("/pending-requests/<int:request_id>/issue", methods=['POST'])
-# @login_required
-# def issue_book(request_id):
-#   if current_user.role != "librarian":
-#     flash(f"Access Denied! You do not have permission to view this page.{current_user.role}", "danger")
-#     return redirect(url_for("home"))
-  
-#   with app.app_context():
-#      book_request = BookRequest.query.get_or_404(request_id)
-#      issue_date = datetime.now()
-#      return_date = issue_date + duration_to_timedelta(book_request.request_duration)
-#      student_id = book_request.student_id
-#      book_id = book_request.book_id
-#      librarian_id = current_user.id
-
-#      bi = BookIssue(issue_date=issue_date,return_date=return_date,student_id=student_id,book_id=book_id,librarian_id=librarian_id)
-#      db.session.add(bi)
-#      db.session.commit()
-
-#      db.session.delete(book_request)
-#      db.session.commit()
-#      flash('Book Issued to Student!', 'success')
-#   return redirect(url_for('pending_requests'))
-
-# @app.route("/pending-requests/<int:request_id>/disapprove", methods=['POST'])
-# @login_required
-# def disapprove_request(request_id):
-#   if current_user.role != "librarian":
-#     flash(f"Access Denied! You do not have permission to view this page.{current_user.role}", "danger")
-#     return redirect(url_for("home"))
-  
-#   with app.app_context():
-#      book_request = BookRequest.query.get_or_404(request_id)
-#      db.session.delete(book_request)
-#      db.session.commit()
-#      flash('Book Request disapproved to Student!', 'danger')
-#   return redirect(url_for('pending_requests'))
-
-# @app.route("/student-issued")
-# @login_required
-# def student_issued():
-#   if current_user.role == "librarian":
-#     flash(f"Access Denied! You do not have permission to view this page.{current_user.role}", "danger")
-#     return redirect(url_for("home"))
-#   else:
-#      books = BookIssue.query.filter_by(student_id=current_user.id).all()
-#      books = [Book.query.filter_by(id=book.book_id).all()+[book.return_date, Genre.query.filter_by(id=Book.query.filter_by(id=book.book_id).first().genre_id).first().name, book.id] for book in books]
-#   return render_template('student_issued_books.html', issued_books=books, title='Issued books')
-
-
-# @app.route("/revoke-access/<int:issue_id>", methods=['POST'])
-# @login_required
-# def revoke_access(issue_id):
-#    if current_user.role != "librarian":
-#     flash(f"Access Denied! You do not have permission to view this page.{current_user.role}", "danger")
-#     return redirect(url_for("home"))
-#    else:
-#       with app.app_context():
-#          book_issue = BookIssue.query.filter_by(id=issue_id).first()
-#          db.session.delete(book_issue)
-#          db.session.commit()
-#       flash(f"Access revoked", "danger")   
-#       return redirect(url_for('sp_dash'))
-   
-# @app.route("/return-book/<int:issue_id>", methods=['POST'])
-# @login_required
-# def return_book(issue_id):
-#    if current_user.role == "librarian":
-#     flash(f"Access Denied! You do not have permission to view this page.{current_user.role}", "danger")
-#     return redirect(url_for("home"))
-#    else:
-#       with app.app_context():
-#          book_issue = BookIssue.query.filter_by(id=issue_id).first()
-#          bid = book_issue.book_id
-#          sid = book_issue.student_id
-#          db.session.delete(book_issue)
-#          db.session.commit()
-#       return redirect(url_for('book_feedback', book_id=bid, student_id=sid))
-   
-
-# @app.route('/book-feedback/<int:book_id>/<int:student_id>', methods=['GET', 'POST'])
-# @login_required
-# def book_feedback(book_id, student_id):
-#    if current_user.role == "librarian" or current_user.id != student_id:
-#     flash("Access Denied! You do not have permission to view this page.", "danger")
-#     return redirect(url_for("home"))
-#    else:
-#       bname = Book.query.filter_by(id=book_id).first().title
-#       sname = Student.query.filter_by(id=student_id).first().username
-
-#       form = FeedBackForm()
-#       if form.validate_on_submit():
-#         feedback = form.feedback.data
-#         if len(feedback) >= 200:
-#            flash("Limit your feedback to less than or equal to 200 words.", "danger")
-#            return redirect(url_for('book_feedback', book_id=book_id, student_id=student_id))
-#         with app.app_context():
-#             f = FeedBack(feedback=feedback,student_id=student_id, book_id=book_id)
-#             db.session.add(f)
-#             db.session.commit()
-#             flash('Feedback Submitted Successfully!', 'success')
-#             return redirect(url_for('home'))
-
-#       return render_template('feedback.html', book_name=bname, student_name=sname, legend='Feedback Form', form=form, title="Book Feedback")
-   
 
 
 # @app.route("/download/<int:book_id>")   
