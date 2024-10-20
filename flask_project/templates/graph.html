@@ -3,6 +3,11 @@
   <div class="media">
     <img id="graph" src="{{ image }}" alt="one">
   </div>
+  {% if image2|length > 0 %}
+    <div class="media">
+      <img id="graph" src="{{ image2 }}" alt="three">
+    </div>
+  {% endif %}
   <div class="media">
     <img id="graph" src="{{ image1 }}" alt="two">
   </div>
