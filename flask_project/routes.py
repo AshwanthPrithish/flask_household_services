@@ -6,16 +6,28 @@ import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import jwt
+import json
 
 from datetime import datetime, timedelta
 from PIL import Image
-from flask import render_template,flash, redirect, url_for, request, make_response, jsonify
-from flask_project import app, db, bcrypt
+from flask import render_template,flash, redirect, session, url_for, request, make_response, jsonify
+from flask_project import app, db, bcrypt, redis_client
 from flask_project.forms import AdminLoginForm, RegistrationForm, LoginForm, RemarkForm, SPLoginForm, SPRegistrationForm, SearchServiceForm, SearchServiceProfessionalForm, ServiceForm, ServiceRequestForm, UpdateCustomerAccount, UpdateSPAccount, UpdateServiceForm
 from flask_project.models import Admin, Customer, Service_Professional, Service, Service_Request, Remarks
 from flask_login import login_user, current_user, logout_user, login_required
 from sqlalchemy import func, not_
 from flask_project.auth_middleware import token_required
+
+def cache_data(key, data, timeout=300):
+    """Store data in Redis with a timeout."""
+    redis_client.setex(key, timeout, json.dumps(data))
+
+def get_cached_data(key):
+    """Retrieve cached data from Redis."""
+    cached_data = redis_client.get(key)
+    if cached_data:
+        return json.loads(cached_data) # type: ignore
+    return None
 
 with app.app_context():
   db.create_all()
@@ -54,6 +66,11 @@ def admin_login():
     admin = Admin.query.filter_by(email=form.email.data).first()
     if admin and bcrypt.check_password_hash(admin.password, form.password.data):
       login_user(admin, remember=form.remember.data)
+
+      session.permanent = True
+      session['user_id'] = admin.id
+      session['role'] = 'customer'
+
       flash(f'Your admin login was success!', 'success')
       return redirect(url_for('admin_dash'))
     else:
@@ -85,8 +102,16 @@ def admin_dash():
 @login_required
 def view_customers():
    if current_user.role == "admin":
-      customers = Customer.query.filter(not_(Customer.username.ilike('%dummy%'))).all()
+      cache_key = "view_customers_key"
+      cached_customers = get_cached_data(cache_key)
+      if cached_customers:
+            customers = cached_customers
+      else:
+            customers = Customer.query.filter(not_(Customer.username.ilike('%dummy%'))).all()
+            customers_serialized = [c.get_as_dict() for c in customers]
+            cache_data(cache_key, customers_serialized)  # Cache the serialized data
       return render_template("view_customers.html", title="View Customers", customers=customers)
+   
    else:
        flash("Access Denied! You do not have permission to view this page.", "danger")
        return redirect(url_for("home"))
@@ -96,8 +121,16 @@ def view_customers():
 @login_required
 def view_service_professionals():
    if current_user.role == "admin":
-      service_professionals =  Service_Professional.query.filter(not_(Service_Professional.username.ilike('%dummy%'))).all()
+      cache_key = "view_service_professionals_key"
+      cached_sps = get_cached_data(cache_key)
+      if cached_sps:
+            service_professionals = cached_sps
+      else:
+            service_professionals = Service_Professional.query.filter(not_(Service_Professional.username.ilike('%dummy%'))).all()
+            service_professionals_serialized = [sp.get_as_dict() for sp in service_professionals]
+            cache_data(cache_key, service_professionals_serialized)  # Cache the serialized
       return render_template("view_service_professionals.html", title="View Service Professionals", service_professionals=service_professionals)
+   
    else:
        flash("Access Denied! You do not have permission to view this page.", "danger")
        return redirect(url_for("home"))
@@ -107,8 +140,16 @@ def view_service_professionals():
 @login_required
 def view_service_requests():
    if current_user.role == "admin":
-      service_requests = Service_Request.query.all()
+      cache_key = "view_service_requests_key"
+      cached_service_requests = get_cached_data(cache_key)
+      if cached_service_requests:
+            service_requests = cached_service_requests
+      else:
+            service_requests = Service_Request.query.all()
+            service_requests_serialized = [sr.get_as_dict() for sr in service_requests]
+            cache_data(cache_key, service_requests_serialized)  # Cache the serialized
       return render_template("view_service_requests.html", title="View Service Requests", service_requests=service_requests)
+   
    else:
        flash("Access Denied! You do not have permission to view this page.", "danger")
        return redirect(url_for("home"))
@@ -146,6 +187,11 @@ def login():
     customer = Customer.query.filter_by(email=form.email.data).first()
     if customer and bcrypt.check_password_hash(customer.password, form.password.data):
       login_user(customer, remember=form.remember.data)
+
+      session.permanent = True
+      session['user_id'] = customer.id
+      session['role'] = 'customer'
+
       flash(f'Your customer login was success!', 'success')
       return redirect(url_for('customer_dash'))
     else:
@@ -210,6 +256,11 @@ def sp_login():
     service_professional = Service_Professional.query.filter_by(email=form.email.data).first()
     if service_professional and bcrypt.check_password_hash(service_professional.password, form.password.data):
       login_user(service_professional, remember=form.remember.data)
+
+      session.permanent = True
+      session['user_id'] = service_professional.id
+      session['role'] = 'service_professional'
+
       flash('Login successful', 'success')
       return redirect(url_for('sp_dash'))
     else:
@@ -239,26 +290,45 @@ def sp_dash():
 @app.route("/search-results-service/<query>")
 @login_required
 def search_results_service(query):
-   services = Service.query.filter(func.lower(Service.name).ilike(f"%{query.lower()}%")).all()
-   services = [{'id':service.id,'name':service.name, 'price':service.price,'description': service.description }  for service in services]
-   services.sort(key = lambda x: x.get('id'), reverse=False) # type: ignore
-   if len(services) <= 0:
-      flash(f'No services found for the query {query}!', 'danger')
-      return redirect(url_for('home'))
-   return render_template('search_results_service.html', services=services, title='Search by Service Name')
+    cache_key = f"search_results_service:{query.lower()}"
+    
+    cached_services = get_cached_data(cache_key)
+    if cached_services:
+        services = cached_services  
+    else:
+        services = Service.query.filter(func.lower(Service.name).ilike(f"%{query.lower()}%")).all()
+        services = [{'id': service.id, 'name': service.name, 'price': service.price, 'description': service.description} for service in services]
+        services.sort(key=lambda x: x.get('id'), reverse=False) # type: ignore
+        
+        cache_data(cache_key, services, timeout=300)  
+
+    if len(services) <= 0:
+        flash(f'No services found for the query {query}!', 'danger')
+        return redirect(url_for('home'))
+
+    return render_template('search_results_service.html', services=services, title='Search by Service Name')
 
 
 @app.route("/search-results-service-professional/<query>")
 @login_required
 def search_results_service_professional(query):
-   service_professionals = Service_Professional.query.filter(func.lower(Service_Professional.username).ilike(f"%{query.lower()}%")).all()
-   service_professionals = [{'id':service_professional.id,'name':service_professional.username, 'email':service_professional.email,'description': service_professional.description, 'experience':service_professional.experience, 'date_created':service_professional.date_created }  for service_professional in service_professionals]
-   service_professionals.sort(key = lambda x: x.get('id'), reverse=False) # type: ignore
-   if len(service_professionals) <= 0:
-      flash(f'No service professionals found for the query {query}!', 'danger')
-      return redirect(url_for('home'))
-   return render_template('search_results_service_professional.html', service_professionals=service_professionals, title='Search by Service Professional Name')
+    cache_key = f"search_results_service_professional:{query.lower()}"
 
+    cached_service_professionals = get_cached_data(cache_key)
+    if cached_service_professionals:
+        service_professionals = cached_service_professionals  
+    else:
+        service_professionals = Service_Professional.query.filter(func.lower(Service_Professional.username).ilike(f"%{query.lower()}%")).all()
+        service_professionals = [{'id': service_professional.id, 'name': service_professional.username, 'email': service_professional.email, 'description': service_professional.description, 'experience': service_professional.experience, 'date_created': service_professional.date_created} for service_professional in service_professionals]
+        service_professionals.sort(key=lambda x: x.get('id'), reverse=False) # type: ignore
+        
+        cache_data(cache_key, service_professionals, timeout=300)  
+
+    if len(service_professionals) <= 0:
+        flash(f'No service professionals found for the query {query}!', 'danger')
+        return redirect(url_for('home'))
+
+    return render_template('search_results_service_professional.html', service_professionals=service_professionals, title='Search by Service Professional Name')
 
 def save_picture(form_picture, role):
    random_hex = secrets.token_hex(8)
@@ -339,8 +409,14 @@ def account():
 @app.route("/services")
 @login_required
 def services():
-  with app.app_context():
-     services_ = [i for i in Service.query.all()]
+  cache_key = "services_key"
+  cached_services = get_cached_data(cache_key)
+  if cached_services:
+    services_ = cached_services
+  else:
+     services_ = [service.get_as_dict() for service in Service.query.all()]
+     services_.sort(key=lambda x: x.get('id'), reverse=False) # type: ignore
+     cache_data(cache_key, services_, timeout=300)
   return render_template("services.html", service_list=services_, title="Services")
 
 
@@ -360,7 +436,9 @@ def new_service():
       with app.app_context():
          db.session.add(service)
          db.session.commit()
-         flash('The Service has been created!', 'success')
+
+      redis_client.delete("services_key")
+      flash('The Service has been created!', 'success')
       return redirect(url_for('services'))
   return render_template('create_service.html', title="New Service", form=form, legend='New Service')
   
@@ -379,7 +457,8 @@ def update_service(service_id):
          service.price = form.price.data
          with app.app_context():
             db.session.commit()
-            flash('Service updated!', 'success')
+         redis_client.delete("services_key")
+         flash('Service updated!', 'success')
          return redirect(url_for('services'))
       return render_template("update_service.html", form=form)
 
@@ -400,6 +479,7 @@ def delete_service(service_id):
      for service_professional in service_professionals:
         db.session.delete(service_professional)
         db.session.commit()
+     redis_client.delete("services_key")
      db.session.delete(service)
      db.session.commit()
      flash('Service Deleted!', 'success')
@@ -408,13 +488,34 @@ def delete_service(service_id):
 @app.route("/service/<int:service_id>")
 @login_required
 def service(service_id):
-  with app.app_context():
-    service = Service.query.get_or_404(service_id)
-  with app.app_context():
-        offered_by_professionals = Service_Professional.query.filter_by(service_id=service_id).all()
-        offered_by_professionals = [{"name":professional.username, "email":professional.email, "description":professional.description, "experience": professional.experience, "date_created":professional.date_created} for professional in offered_by_professionals]
-  return render_template('service.html', name=service.name, service=service, offered_by_professionals=offered_by_professionals)
+    cache_key = f"service:{service_id}"
 
+    # Check if the data is cached
+    cached_data = get_cached_data(cache_key)
+    
+    if cached_data:
+        # Use cached data
+        service = cached_data['service']
+        offered_by_professionals = cached_data['offered_by_professionals']
+    else:
+        # Fetch data from the database if not cached
+        service = Service.query.get_or_404(service_id)
+        
+        offered_by_professionals = Service_Professional.query.filter_by(service_id=service_id).all()
+        offered_by_professionals = [
+            {
+                "name": professional.username,
+                "email": professional.email,
+                "description": professional.description,
+                "experience": professional.experience,
+                "date_created": professional.date_created,
+            }
+            for professional in offered_by_professionals
+        ]
+
+        # Cache the results
+        cache_data(cache_key, {'service': service, 'offered_by_professionals': offered_by_professionals}, timeout=300)  # Cache for 5 minutes
+    return render_template('service.html', name=service.name, service=service, offered_by_professionals=offered_by_professionals)
  
 def duration_to_timedelta(st):
     s = 0
@@ -436,34 +537,68 @@ def duration_to_timedelta(st):
 @app.route("/service/<int:service_id>/request_service", methods=['GET', 'POST'])
 @login_required
 def request_service(service_id):
-   if current_user.role != 'customer':
-    flash(f"Access Denied! Only Customer can request Service", "danger")
-    return redirect(url_for("home"))
-   else:
-      form = ServiceRequestForm()
-      if form.validate_on_submit():
-        if len(Service_Request.query.filter(Service_Request.customer_id==current_user.id,  func.lower(Service_Request.service_status) != "completed".lower()).all()) == 5:
-         flash('You have already requested 5 services. Mark a service as complete to request this!', 'danger')
-         return redirect(url_for('home'))
-        elif len(Service_Request.query.filter(Service_Request.customer_id==current_user.id, Service_Request.service_id==service_id, Service_Request.service_status!="completed").all()) > 0:
-           flash('You have already requested this service!', 'danger')
-           return redirect(url_for('home'))
-        elif len(Service_Request.query.filter(Service_Request.customer_id==current_user.id,Service_Request.service_id==service_id).all()) > 0 and Service_Request.query.filter_by(customer_id=current_user.id,service_id=service_id).first().service_status == "requested": # type: ignore
-           flash('You have already requested this service! Wait for admin approval of previous request.', 'danger')
-           return redirect(url_for('home'))
-        else:
-         customer_id = current_user.id
-         duration = form.request_duration.data
-         td = duration_to_timedelta(duration)
-         date_of_completion = form.date_of_request.data + td
-         with app.app_context():
+    if current_user.role != 'customer':
+        flash("Access Denied! Only Customer can request Service", "danger")
+        return redirect(url_for("home"))
+    
+    form = ServiceRequestForm()
+
+    cache_key_requests_count = f"service_requests_count:{current_user.id}"
+    cache_key_service_request = f"service_request:{current_user.id}:{service_id}"
+
+    requests_count = get_cached_data(cache_key_requests_count)
+
+    if requests_count is None:
+        requests_count = len(Service_Request.query.filter(Service_Request.customer_id == current_user.id, func.lower(Service_Request.service_status) != "completed").all())
+        cache_data(cache_key_requests_count, requests_count, timeout=300)
+
+    service_request_exists = get_cached_data(cache_key_service_request)
+
+    if service_request_exists is None:
+        service_request_exists = len(Service_Request.query.filter(Service_Request.customer_id == current_user.id, Service_Request.service_id == service_id, Service_Request.service_status != "completed").all()) > 0
+        cache_data(cache_key_service_request, service_request_exists, timeout=300)
+
+    if requests_count >= 5:
+        flash('You have already requested 5 services. Mark a service as complete to request this!', 'danger')
+        return redirect(url_for('home'))
+    
+    if service_request_exists:
+        flash('You have already requested this service!', 'danger')
+        return redirect(url_for('home'))
+
+    # Check for previous requests with "requested" status
+    previous_request = Service_Request.query.filter_by(customer_id=current_user.id, service_id=service_id).first()
+    if previous_request and previous_request.service_status == "requested":
+        flash('You have already requested this service! Wait for admin approval of the previous request.', 'danger')
+        return redirect(url_for('home'))
+
+    if form.validate_on_submit():
+        customer_id = current_user.id
+        duration = form.request_duration.data
+        td = duration_to_timedelta(duration)
+        date_of_completion = form.date_of_request.data + td
+        
+        # Create the new service request
+        with app.app_context():
             status = "requested"
-            br = Service_Request(date_of_request=form.date_of_request.data ,customer_id=customer_id, service_id=service_id, date_of_completion=date_of_completion, service_status=status) # type: ignore
-            db.session.add(br)
+            new_request = Service_Request(
+                date_of_request=form.date_of_request.data, # type: ignore
+                customer_id=customer_id, # type: ignore
+                service_id=service_id, # type: ignore
+                date_of_completion=date_of_completion, # type: ignore
+                service_status=status # type: ignore
+            )
+            db.session.add(new_request)
             db.session.commit()
+
+            # Invalidate the cached request count and request existence
+            cache_data(cache_key_requests_count, requests_count + 1, timeout=300)  # Update cache count
+            cache_data(cache_key_service_request, True, timeout=300)  # Update cache existence
+
             flash('Service Requested Successfully!', 'success')
             return redirect(url_for('home'))
-      return render_template('add_service_request.html', title="Request this service", form=form)
+
+    return render_template('add_service_request.html', title="Request this service", form=form)
 
 
 @app.route("/complete-request/<int:request_id>", methods=['GET', 'POST'])

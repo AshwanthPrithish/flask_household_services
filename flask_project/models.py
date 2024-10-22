@@ -1,6 +1,8 @@
 from flask_project import db, login_manager
 from datetime import datetime
 from flask_login import UserMixin
+from sqlalchemy.inspection import inspect
+from sqlalchemy.orm import class_mapper
 
 @login_manager.user_loader
 def load_user(user_id):
@@ -19,6 +21,12 @@ class Admin(db.Model, UserMixin):
     password = db.Column(db.String(60), nullable=False)
     role = "admin"
 
+    def get_as_dict(self):
+        mapper = class_mapper(self.__class__)
+        """Convert the Customer instance to a dictionary."""
+        return {column.name: getattr(self, column.name) for column in mapper.columns if not column.name == "password"}
+
+
 class Customer(db.Model, UserMixin):
     __tablename__ = 'customer'  
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
@@ -35,6 +43,12 @@ class Customer(db.Model, UserMixin):
 
     def __repr__(self):
         return f"Customer('{self.username}', '{self.email}', '{self.image_file}')"
+    
+    def get_as_dict(self):
+        mapper = class_mapper(self.__class__)
+        """Convert the Customer instance to a dictionary."""
+        return {column.name: getattr(self, column.name) for column in mapper.columns if not column.name == "password"}
+
 
 
 class Service(db.Model):
@@ -49,6 +63,12 @@ class Service(db.Model):
 
     def __repr__(self):
         return f"Service('{self.name}', '{self.description}')"
+    
+    def get_as_dict(self):
+        mapper = class_mapper(self.__class__)
+        """Convert the Customer instance to a dictionary."""
+        return {column.name: getattr(self, column.name) for column in mapper.columns if not column.name == "password"}
+
 
 
 class Service_Professional(db.Model, UserMixin):
@@ -69,6 +89,12 @@ class Service_Professional(db.Model, UserMixin):
 
     def __repr__(self):
         return f"Service Professional('{self.username}', '{self.email}')"
+    
+    def get_as_dict(self):
+        mapper = class_mapper(self.__class__)
+        """Convert the Customer instance to a dictionary."""
+        return {column.name: getattr(self, column.name) for column in mapper.columns if not column.name == "password"}
+
 
 
 class Service_Request(db.Model):
@@ -90,6 +116,12 @@ class Service_Request(db.Model):
 
     def __repr__(self):
         return f"Service_Request('{self.date_of_request}', '{self.date_of_completion}')"
+    
+    def get_as_dict(self):
+        mapper = class_mapper(self.__class__)
+        """Convert the Customer instance to a dictionary."""
+        return {column.name: getattr(self, column.name) for column in mapper.columns if not column.name == "password"}
+
 
 
 class Remarks(db.Model):
@@ -102,3 +134,9 @@ class Remarks(db.Model):
 
     def __repr__(self):
         return f"Remark('{self.service_request_id}', '{self.remarks}')"
+    
+    def get_as_dict(self):
+        mapper = class_mapper(self.__class__)
+        """Convert the Customer instance to a dictionary."""
+        return {column.name: getattr(self, column.name) for column in mapper.columns if not column.name == "password"}
+
