@@ -361,6 +361,8 @@ def account():
               current_user.address = form.address.data
               current_user.contact = form.contact.data
               db.session.commit()
+            cache_key = "view_customers_key"
+            redis_client.delete(cache_key)
             flash('Your Account has been updated!', category='success')
             return redirect(url_for('account'))
         elif request.method == "GET":
@@ -387,6 +389,8 @@ def account():
               current_user.experience = form.experience.data
               current_user.service_id = Service.query.filter_by(name=form.service.data).first().id # type: ignore
               db.session.commit()
+            cache_key = "view_service_professionals_key"
+            redis_client.delete(cache_key)
             flash('Your Account has been updated!', category='success')
             return redirect(url_for('account'))
         elif request.method == "GET":
@@ -589,6 +593,7 @@ def request_service(service_id):
             redis_client.delete(cache_key)
             cache_key = f"pending_requests"
             redis_client.delete(cache_key)
+            redis_client.delete("view_service_requests_key")
             cache_data(cache_key_requests_count, requests_count + 1, timeout=300) 
             cache_data(cache_key_service_request, True, timeout=300)  
 
@@ -612,9 +617,12 @@ def mark_request_as_complete(request_id):
          return redirect(url_for('home'))
       
       request.service_status = "completed" # type: ignore
+      cache_key = f"past_services_{current_user.role}_{current_user.id}"
+      redis_client.delete(cache_key)
       db.session.commit()
    cache_key = f"customer_requests_{current_user.id}"
    redis_client.delete(cache_key)
+   redis_client.delete("view_service_requests_key")
    flash(f"Marked the service request as complete!", "danger")
    return redirect(url_for('submit_remarks', request_id=request_id))
 
@@ -678,6 +686,7 @@ def cancel_request(request_id):
    redis_client.delete(cache_key)
    cache_key = "pending_requests"
    redis_client.delete(cache_key)
+   redis_client.delete("view_service_requests_key")
    flash(f"Cancelled the service request!", "danger")
    return redirect(url_for('home'))
 
@@ -798,6 +807,7 @@ def accept_request(request_id, service_professional_id):
 
    cache_key = "pending_requests"
    redis_client.delete(cache_key)
+   redis_client.delete("view_service_requests_key")
 
    flash(f"Accepted Service", "success")
    return redirect(url_for("home"))
@@ -821,6 +831,7 @@ def reject_request(request_id, service_professional_id):
       db.session.commit()
    cache_key = "pending_requests"
    redis_client.delete(cache_key)
+   redis_client.delete("view_service_requests_key")
    flash(f"Rejected Service", "success")
    return redirect(url_for("home"))
 
@@ -828,15 +839,26 @@ def reject_request(request_id, service_professional_id):
 @app.route('/past-services')
 @login_required
 def past_services():
-   if current_user.role != 'admin':
-      if current_user.role == "customer":
-         past_services = Service_Request.query.filter_by(customer_id=current_user.id, service_status="completed").all()
-      else:
-         past_services = Service_Request.query.filter_by(service_professional_id=current_user.id, service_status="completed").all()
-      return render_template("past_services.html", past_services=past_services)
-   else:
-      flash("Access Denied", "danger")
-      return redirect(url_for("home"))
+    if current_user.role == 'admin':
+        flash("Access Denied", "danger")
+        return redirect(url_for("home"))
+
+    cache_key = f"past_services_{current_user.role}_{current_user.id}"
+
+    cached_data = get_cached_data(cache_key)
+
+    if cached_data is not None:
+        past_services = cached_data 
+    else:
+        if current_user.role == "customer":
+            past_services = Service_Request.query.filter_by(customer_id=current_user.id, service_status="completed").all()
+        else:
+            past_services = Service_Request.query.filter_by(service_professional_id=current_user.id, service_status="completed").all()
+
+        cache_data(cache_key, past_services, timeout=300)
+
+    return render_template("past_services.html", past_services=past_services)
+
    
 def save_graph(filename, role, name):
    _, ext = os.path.splitext(filename)
