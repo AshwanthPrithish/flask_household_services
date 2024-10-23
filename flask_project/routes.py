@@ -490,15 +490,12 @@ def delete_service(service_id):
 def service(service_id):
     cache_key = f"service:{service_id}"
 
-    # Check if the data is cached
     cached_data = get_cached_data(cache_key)
     
     if cached_data:
-        # Use cached data
         service = cached_data['service']
         offered_by_professionals = cached_data['offered_by_professionals']
     else:
-        # Fetch data from the database if not cached
         service = Service.query.get_or_404(service_id)
         
         offered_by_professionals = Service_Professional.query.filter_by(service_id=service_id).all()
@@ -513,7 +510,6 @@ def service(service_id):
             for professional in offered_by_professionals
         ]
 
-        # Cache the results
         cache_data(cache_key, {'service': service, 'offered_by_professionals': offered_by_professionals}, timeout=300)  # Cache for 5 minutes
     return render_template('service.html', name=service.name, service=service, offered_by_professionals=offered_by_professionals)
  
@@ -566,7 +562,6 @@ def request_service(service_id):
         flash('You have already requested this service!', 'danger')
         return redirect(url_for('home'))
 
-    # Check for previous requests with "requested" status
     previous_request = Service_Request.query.filter_by(customer_id=current_user.id, service_id=service_id).first()
     if previous_request and previous_request.service_status == "requested":
         flash('You have already requested this service! Wait for admin approval of the previous request.', 'danger')
@@ -578,7 +573,6 @@ def request_service(service_id):
         td = duration_to_timedelta(duration)
         date_of_completion = form.date_of_request.data + td
         
-        # Create the new service request
         with app.app_context():
             status = "requested"
             new_request = Service_Request(
@@ -591,9 +585,12 @@ def request_service(service_id):
             db.session.add(new_request)
             db.session.commit()
 
-            # Invalidate the cached request count and request existence
-            cache_data(cache_key_requests_count, requests_count + 1, timeout=300)  # Update cache count
-            cache_data(cache_key_service_request, True, timeout=300)  # Update cache existence
+            cache_key = f"customer_requests_{current_user.id}"
+            redis_client.delete(cache_key)
+            cache_key = f"pending_requests"
+            redis_client.delete(cache_key)
+            cache_data(cache_key_requests_count, requests_count + 1, timeout=300) 
+            cache_data(cache_key_service_request, True, timeout=300)  
 
             flash('Service Requested Successfully!', 'success')
             return redirect(url_for('home'))
@@ -609,8 +606,15 @@ def mark_request_as_complete(request_id):
       return redirect(url_for("home"))
    with app.app_context():
       request = Service_Request.query.filter_by(id=request_id).first()
+
+      if request.service_status != "assigned": # type: ignore
+         flash(f"Service request is not yet assigned. Please wait to get it assigned first.", "danger")
+         return redirect(url_for('home'))
+      
       request.service_status = "completed" # type: ignore
       db.session.commit()
+   cache_key = f"customer_requests_{current_user.id}"
+   redis_client.delete(cache_key)
    flash(f"Marked the service request as complete!", "danger")
    return redirect(url_for('submit_remarks', request_id=request_id))
 
@@ -627,20 +631,38 @@ def submit_remarks(request_id):
       with app.app_context():
          db.session.add(remark)
          db.session.commit()
+      cache_key = "cached_remarks"
+      redis_client.delete(cache_key)
       flash(f"Remarks submitted successfully!", "success")
       return redirect(url_for('home'))
    return render_template('submit_remark.html', title='Submit Remarks', form=form)
 
 @app.route("/remarks")
 def remarks():
-   remarks = Remarks.query.all()
-   f = []
-   for remark in remarks:
-      service_request = Service_Request.query.filter_by(id=remark.service_request_id).first_or_404()
-      service_name = Service.query.filter_by(id=service_request.service_id).first().name # type: ignore
-      service_professional_name, customer_name = Service_Professional.query.filter_by(id=service_request.service_professional_id).first().username, Customer.query.filter_by(id=service_request.customer_id).first().username # type: ignore
-      f.append({'service_name': service_name, 'service_professional_name': service_professional_name, 'customer_name': customer_name, 'remark': remark.remarks})
-   return render_template('view_remarks.html', f_list = f, title="remarks")
+    cache_key_remarks = "cached_remarks"
+    
+    cached_remarks = get_cached_data(cache_key_remarks)
+    
+    if cached_remarks is not None:
+        f = cached_remarks  
+    else:
+        remarks = Remarks.query.all()
+        f = []
+        for remark in remarks:
+            service_request = Service_Request.query.filter_by(id=remark.service_request_id).first_or_404()
+            service_name = Service.query.filter_by(id=service_request.service_id).first().name  # type: ignore
+            service_professional_name = Service_Professional.query.filter_by(id=service_request.service_professional_id).first().username  # type: ignore
+            customer_name = Customer.query.filter_by(id=service_request.customer_id).first().username  # type: ignore
+            
+            f.append({
+                'service_name': service_name,
+                'service_professional_name': service_professional_name,
+                'customer_name': customer_name,
+                'remark': remark.remarks
+            })
+        cache_data(cache_key_remarks, f, timeout=300)
+    return render_template('view_remarks.html', f_list=f, title="remarks")
+
 
 @app.route("/cancel/<int:request_id>", methods=['GET', 'POST'])
 @login_required
@@ -652,6 +674,10 @@ def cancel_request(request_id):
       request = Service_Request.query.filter_by(id=request_id).first()
       db.session.delete(request)
       db.session.commit()
+   cache_key = f"customer_requests_{current_user.id}"
+   redis_client.delete(cache_key)
+   cache_key = "pending_requests"
+   redis_client.delete(cache_key)
    flash(f"Cancelled the service request!", "danger")
    return redirect(url_for('home'))
 
@@ -659,71 +685,96 @@ def cancel_request(request_id):
 @app.route('/customer-requests')
 @login_required
 def customer_requests():
-   if current_user.role != 'customer':
-      flash(f"Access Denied! Only Customers view requested books", "danger")
-      return redirect(url_for("home"))
-   else:
-      service_requests = Service_Request.query.filter_by(customer_id=current_user.id).all() # type: ignore
-      details = []
-      service_name = ""
-      customer_name = ""
-      service_professional_name = ""
-      service_id = ""
-      customer_id = ""
-      service_professional_id = ""
-      service_status = ""
-      date_of_request = ""
-      date_of_completion = ""
-      for service_request in service_requests:
-         service_name = service_request.service.name
-         customer_name = current_user.username
-         service_id = service_request.service.id
-         customer_id = current_user.id
-         service_status = service_request.service_status
-         date_of_request = service_request.date_of_request.strftime("%d-%m-%Y")
-         date_of_completion = service_request.date_of_completion.strftime("%d-%m-%Y")
+    if current_user.role != 'customer':
+        flash(f"Access Denied! Only Customers can view requested services", "danger")
+        return redirect(url_for("home"))
 
-         if service_request.service_professional_id:
-            print(service_request.id)
-            service_professional_name = service_request.service_professional.username
-            service_professional_id = service_request.service_professional_id
-         else:
-            service_professional_name = ""
-            service_professional_id = ""
+    cache_key = f"customer_requests_{current_user.id}"
 
-         details.append({'request_id':service_request.id,'service_name':service_name, 'customer_name': customer_name,'service_professional_name': service_professional_name,'service_id': service_id, 'customer_id': customer_id,'service_professional_id': service_professional_id,'service_status': service_status, 'date_of_request': date_of_request, 'date_of_completion': date_of_completion}) # type: ignore
-      return render_template('customer_requests.html', requested_services=details, title='Requests')
+    cached_data = get_cached_data(cache_key)
+
+    if cached_data is not None:
+        details = cached_data  
+    else:
+        service_requests = Service_Request.query.filter_by(customer_id=current_user.id).all()  # type: ignore
+        details = []
+
+        for service_request in service_requests:
+            service_name = service_request.service.name
+            customer_name = current_user.username
+            service_id = service_request.service.id
+            customer_id = current_user.id
+            service_status = service_request.service_status
+            date_of_request = service_request.date_of_request.strftime("%d-%m-%Y")
+            date_of_completion = service_request.date_of_completion.strftime("%d-%m-%Y")
+
+            if service_request.service_professional_id:
+                service_professional_name = service_request.service_professional.username
+                service_professional_id = service_request.service_professional_id
+            else:
+                service_professional_name = ""
+                service_professional_id = ""
+
+            details.append({
+                'request_id': service_request.id,
+                'service_name': service_name,
+                'customer_name': customer_name,
+                'service_professional_name': service_professional_name,
+                'service_id': service_id,
+                'customer_id': customer_id,
+                'service_professional_id': service_professional_id,
+                'service_status': service_status,
+                'date_of_request': date_of_request,
+                'date_of_completion': date_of_completion
+            })  # type: ignore
+
+        cache_data(cache_key, details, timeout=300)
+
+    return render_template('customer_requests.html', requested_services=details, title='Requests')
 
 
 
 @app.route('/pending-requests')
 @login_required
 def pending_requests():
-   if current_user.role != "service_professional":
-     flash(f"Access Denied! You do not have permission to view this page.{current_user.role}", "danger")
-     return redirect(url_for("home"))
-   
-   requests = Service_Request.query.filter_by(service_status="requested").all()
-   details = []
-   service_name = ""
-   customer_name = ""
-   service_id = ""
-   customer_id = ""
-   service_status = ""
-   date_of_request = ""
-   date_of_completion = ""
-   for service_request in requests:
-         service_name = service_request.service.name
-         customer_name = service_request.customer.username
-         service_id = service_request.service.id
-         customer_id = current_user.id
-         service_status = service_request.service_status
-         date_of_request = service_request.date_of_request.strftime("%d-%m-%Y")
-         date_of_completion = service_request.date_of_completion.strftime("%d-%m-%Y")
+    if current_user.role != "service_professional":
+        flash(f"Access Denied! You do not have permission to view this page. {current_user.role}", "danger")
+        return redirect(url_for("home"))
 
-         details.append({'request_id':service_request.id,'service_name':service_name, 'customer_name': customer_name,'service_id': service_id, 'customer_id': customer_id,'service_status': service_status, 'date_of_request': date_of_request, 'date_of_completion': date_of_completion}) # type: ignore
-   return render_template('pending_requests.html', title="Pending Requests", requests=details)
-   
+    cache_key = "pending_requests"
+
+    cached_data = get_cached_data(cache_key)
+
+    if cached_data is not None:
+        details = cached_data  
+    else:
+        requests = Service_Request.query.filter_by(service_status="requested").all()
+        details = []
+
+        for service_request in requests:
+            service_name = service_request.service.name
+            customer_name = service_request.customer.username
+            service_id = service_request.service.id
+            customer_id = service_request.customer_id
+            service_status = service_request.service_status
+            date_of_request = service_request.date_of_request.strftime("%d-%m-%Y")
+            date_of_completion = service_request.date_of_completion.strftime("%d-%m-%Y")
+
+            details.append({
+                'request_id': service_request.id,
+                'service_name': service_name,
+                'customer_name': customer_name,
+                'service_id': service_id,
+                'customer_id': customer_id,
+                'service_status': service_status,
+                'date_of_request': date_of_request,
+                'date_of_completion': date_of_completion
+            })  # type: ignore
+
+        cache_data(cache_key, details, timeout=300)
+
+    return render_template('pending_requests.html', title="Pending Requests", requests=details)
+
 
 
 @app.route('/accept-request/<int:request_id>/<int:service_professional_id>', methods=['GET', 'POST'])
@@ -738,17 +789,39 @@ def accept_request(request_id, service_professional_id):
       request.service_professional_id = service_professional_id # type: ignore
       request.service_professional = Service_Professional.query.filter_by(id=service_professional_id).first()  # type: ignore
       request.service_status = "assigned" # type: ignore
+
+      cache_key = f"customer_requests_{request.customer.id}" # type: ignore
+      redis_client.delete(cache_key)
+      
       db.session.commit()
+      
+
+   cache_key = "pending_requests"
+   redis_client.delete(cache_key)
+
    flash(f"Accepted Service", "success")
    return redirect(url_for("home"))
 
 @app.route('/reject-request/<int:request_id>/<int:service_professional_id>', methods=['GET','POST'])
 @login_required
-def reject_request():
+def reject_request(request_id, service_professional_id):
    if current_user.role != "service_professional":
      flash(f"Access Denied! You do not have permission to view this page.{current_user.role}", "danger")
      return redirect(url_for("home"))
-   flash(f"Accepted Service", "success")
+   
+   with app.app_context():
+      request = Service_Request.query.filter_by(id=request_id).first()
+      request.service_professional_id = service_professional_id # type: ignore
+      request.service_professional = Service_Professional.query.filter_by(id=service_professional_id).first()  # type: ignore
+      request.service_status = "rejected" # type: ignore
+
+      cache_key = f"customer_requests_{request.customer.id}" # type: ignore
+      redis_client.delete(cache_key)
+      
+      db.session.commit()
+   cache_key = "pending_requests"
+   redis_client.delete(cache_key)
+   flash(f"Rejected Service", "success")
    return redirect(url_for("home"))
 
 
