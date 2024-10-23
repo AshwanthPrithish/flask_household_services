@@ -1,0 +1,16 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Monthly Activity Report</title>
+</head>
+<body>
+    <h1>Dear {{ customer.username }},</h1>
+    <p>Here is your monthly activity report:</p>
+    <ul>
+        {% for request in requests %}
+            <li>Service: {{ request.service.name }} - Status: {{ request.service_status }} - Date of Request: {{ request.date_of_request.strftime("%d-%m-%Y") }}</li>
+        {% endfor %}
+    </ul>
+    <p>Thank you for using our service!</p>
+</body>
+</html>

@@ -1,7 +1,13 @@
+amqp==5.2.0
 bcrypt==4.2.0
+billiard==4.2.1
 blinker==1.8.2
 cachelib==0.13.0
+celery==5.4.0
 click==8.1.7
+click-didyoumean==0.3.1
+click-plugins==1.1.1
+click-repl==0.3.0
 contourpy==1.3.0
 cycler==0.12.1
 dnspython==2.7.0
@@ -10,6 +16,7 @@ eralchemy==1.5.0
 Flask==3.0.3
 Flask-Bcrypt==1.0.1
 Flask-Login==0.6.3
+Flask-Mail==0.10.0
 Flask-Session==0.8.0
 Flask-SQLAlchemy==3.1.1
 Flask-WTF==1.2.1
@@ -20,6 +27,7 @@ idna==3.10
 itsdangerous==2.2.0
 Jinja2==3.1.4
 kiwisolver==1.4.7
+kombu==5.4.2
 MarkupSafe==2.1.5
 matplotlib==3.9.2
 msgspec==0.18.6
@@ -27,6 +35,7 @@ numpy==2.1.2
 packaging==24.1
 pdfkit==1.0.0
 pillow==10.4.0
+prompt_toolkit==3.0.48
 PyJWT==2.9.0
 pyparsing==3.1.4
 python-dateutil==2.9.0.post0
@@ -34,5 +43,8 @@ redis==5.1.1
 six==1.16.0
 SQLAlchemy==2.0.35
 typing_extensions==4.12.2
+tzdata==2024.2
+vine==5.1.0
+wcwidth==0.2.13
 Werkzeug==3.0.4
 WTForms==3.1.2

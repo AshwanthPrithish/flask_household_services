@@ -11,12 +11,13 @@ import json
 from datetime import datetime, timedelta
 from PIL import Image
 from flask import render_template,flash, redirect, session, url_for, request, make_response, jsonify
-from flask_project import app, db, bcrypt, redis_client
+from flask_project import app, db, bcrypt, redis_client, mail
 from flask_project.forms import AdminLoginForm, RegistrationForm, LoginForm, RemarkForm, SPLoginForm, SPRegistrationForm, SearchServiceForm, SearchServiceProfessionalForm, ServiceForm, ServiceRequestForm, UpdateCustomerAccount, UpdateSPAccount, UpdateServiceForm
 from flask_project.models import Admin, Customer, Service_Professional, Service, Service_Request, Remarks
 from flask_login import login_user, current_user, logout_user, login_required
 from sqlalchemy import func, not_
 from flask_project.auth_middleware import token_required
+from flask_mail import Message
 
 def cache_data(key, data, timeout=300):
     """Store data in Redis with a timeout."""
@@ -1027,6 +1028,19 @@ def admin_graphs():
 
    return render_template('graph.html', image=image_url,image1=image_url1, image2=image_url2,title="Graph")
 
+
+@app.route("/test-mail")
+@login_required
+def test_mail():
+    # Send a monthly activity report for a specific customer
+    customer = current_user
+    if customer:
+        past_requests = Service_Request.query.filter_by(customer_id=customer.id, service_status="completed").all()
+        html_content = render_template('monthly_report.html', requests=past_requests, customer=customer)
+        msg = Message('Your Monthly Activity Report', recipients=["ashuarul2002@gmail.com"])
+        msg.html = html_content
+        mail.send(msg)
+    return f"Report sent to {customer.email}"
 
 # @app.route("/download/<int:book_id>")   
 # @login_required
