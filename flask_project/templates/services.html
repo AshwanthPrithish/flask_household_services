@@ -2,7 +2,7 @@
 <h1>List of Available Services</h1>
 {% for service in service_list|sort(attribute='id') %}
 <div class="container">
-  <b>Service Name:</b> <a class="article-title" href="{{ url_for('service', service_id=service.id) }}">{{ service['name'] }}</a><br />
+  <b>Service Name:</b> <a class="article-title" href="{{ url_for('main.service', service_id=service.id) }}">{{ service['name'] }}</a><br />
   <b>Price:</b> {{ service['price'] }}<br />
   <b>Description:</b> {{ service['description'] }}<br />
 </div>

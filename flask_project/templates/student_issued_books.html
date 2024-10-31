@@ -37,7 +37,7 @@
             <p style="margin-left: 5px;">Return Book <b>{{ book[0].title }}</b> to Library?</p>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
-                <form action="{{ url_for('return_book', issue_id=book[-1]) }}" method="POST">
+                <form action="{{ url_for('main.return_book', issue_id=book[-1]) }}" method="POST">
                 <input type="submit" class="btn btn-danger" value="Return" />
                 </form>
             </div>
@@ -59,7 +59,7 @@
             <br />
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
-                <a href="{{ url_for('download_book', book_id=book[0].id) }}" class="btn btn-secondary" role="button" target="_blank">Download</a>
+                <a href="{{ url_for('main.download_book', book_id=book[0].id) }}" class="btn btn-secondary" role="button" target="_blank">Download</a>
             </div>
             </div>
             </div>

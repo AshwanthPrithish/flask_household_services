@@ -1,7 +1,7 @@
 from flask import request, make_response, jsonify
 import jwt
 from functools import wraps
-from flask_project import app
+from flask import current_app as app
 from flask_project.models import Customer, Service_Professional
 
 # Authentication decorator

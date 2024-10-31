@@ -2,9 +2,11 @@
 <h1>All Service Requests</h1>
 {% for request in service_requests %}
 <div class="container">
-   <b>Customer Name: </b>{{ request['customer']['username'] }}<br />
-   <b>Service Professional Name: </b>{{ request['service_professional']['username'] }}<br />
-   <b>Service Name: </b>{{ request['service']['name'] }}<br />
+   <b>Customer Name: </b>{{ request['customer_name'] }}<br />
+   {% if request['service_professional_name']|length > 0 %}
+      <b>Service Professional Name: </b>{{ request['service_professional_name'] }}<br />
+   {% endif %}
+   <b>Service Name: </b>{{ request['service_name'] }}<br />
    <b>Service Status: </b>{{ request['service_status'] }}<br />
    <b>Date of Request: </b>{{ request['date_of_request'].strftime("%d-%m-%Y") }}<br />
    <b>Date of Completion: </b>{{ request['date_of_completion'].strftime("%d-%m-%Y") }}<br />

@@ -1,5 +1,7 @@
-from flask_project import db, app, bcrypt
+from flask_project import db, bcrypt, create_app
 from flask_project.models import Admin, Customer, Service, Service_Request, Service_Professional
+
+app = create_app()
 def db_setup_rbac():
     with app.app_context():
         if not Admin.query.first():

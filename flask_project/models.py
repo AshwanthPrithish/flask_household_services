@@ -39,7 +39,7 @@ class Customer(db.Model, UserMixin):
     role = "customer"
 
     # Relationship to Service_Request
-    service_requests = db.relationship('Service_Request', back_populates='customer', lazy=True)
+    service_requests = db.relationship('Service_Request', back_populates='customer', lazy="joined")
 
     def __repr__(self):
         return f"Customer('{self.username}', '{self.email}', '{self.image_file}')"
@@ -59,7 +59,7 @@ class Service(db.Model):
     description = db.Column(db.Text, nullable=False)
 
     # Relationship to Service_Request
-    service_requests = db.relationship('Service_Request', back_populates='service', lazy=True)
+    service_requests = db.relationship('Service_Request', back_populates='service', lazy="joined")
 
     def __repr__(self):
         return f"Service('{self.name}', '{self.description}')"
@@ -84,7 +84,7 @@ class Service_Professional(db.Model, UserMixin):
 
     # Foreign key to relate to Service
     service_id = db.Column(db.Integer, db.ForeignKey('service.id'), nullable=False)
-    service_requests = db.relationship('Service_Request', back_populates='service_professional', lazy=True)
+    service_requests = db.relationship('Service_Request', back_populates='service_professional', lazy="joined")
     role = "service_professional"
 
     def __repr__(self):
@@ -110,9 +110,9 @@ class Service_Request(db.Model):
     service_id = db.Column(db.Integer, db.ForeignKey('service.id'), nullable=False)  # Foreign key for Service
 
     # Relationships
-    customer = db.relationship('Customer', back_populates='service_requests')
-    service_professional = db.relationship('Service_Professional', back_populates='service_requests')
-    service = db.relationship('Service', back_populates='service_requests')
+    customer = db.relationship('Customer', back_populates='service_requests',lazy='joined')
+    service_professional = db.relationship('Service_Professional', back_populates='service_requests',lazy='joined')
+    service = db.relationship('Service', back_populates='service_requests',lazy='joined')
 
     def __repr__(self):
         return f"Service_Request('{self.date_of_request}', '{self.date_of_completion}')"
@@ -121,7 +121,6 @@ class Service_Request(db.Model):
         mapper = class_mapper(self.__class__)
         """Convert the Customer instance to a dictionary."""
         return {column.name: getattr(self, column.name) for column in mapper.columns if not column.name == "password"}
-
 
 
 class Remarks(db.Model):
