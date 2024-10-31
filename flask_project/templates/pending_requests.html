@@ -20,7 +20,7 @@
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
                 <form action="{{ url_for('main.accept_request', request_id=request['request_id'], service_professional_id=current_user.id) }}" method="POST">
-                <input type="submit" class="btn btn-danger" value="Issue" />
+                <input type="submit" class="btn btn-danger" value="Accept" />
                 </form>
             </div>
             </div>
@@ -40,7 +40,7 @@
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
                 <form action="{{ url_for('main.reject_request', request_id=request['request_id'], service_professional_id=current_user.id) }}" method="POST">
-                <input type="submit" class="btn btn-danger" value="Disapprove" />
+                <input type="submit" class="btn btn-danger" value="Reject" />
                 </form>
             </div>
             </div>

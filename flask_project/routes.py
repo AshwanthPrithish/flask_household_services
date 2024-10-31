@@ -148,7 +148,7 @@ def view_service_requests():
       cache_key = "view_service_requests_key"
       cached_service_requests = get_cached_data(cache_key)
       if cached_service_requests:
-            service_requests = service_requests = [
+            service_requests = [
             {
                **sr,
                'date_of_request': datetime.fromisoformat(sr['date_of_request']),
@@ -349,10 +349,11 @@ def search_results_service_professional(query):
         service_professionals = cached_service_professionals  
     else:
         service_professionals = Service_Professional.query.filter(func.lower(Service_Professional.username).ilike(f"%{query.lower()}%")).all()
-        service_professionals = [{'id': service_professional.id, 'name': service_professional.username, 'email': service_professional.email, 'description': service_professional.description, 'experience': service_professional.experience, 'date_created': service_professional.date_created} for service_professional in service_professionals]
+        service_professionals = [{'id': service_professional.id, 'name': service_professional.username, 'email': service_professional.email, 'description': service_professional.description, 'experience': service_professional.experience, 'date_created': datetime.isoformat(service_professional.date_created)} for service_professional in service_professionals]
         service_professionals.sort(key=lambda x: x.get('id'), reverse=False) # type: ignore
         
-        cache_data(cache_key, service_professionals, timeout=300)  
+        cache_data(cache_key, service_professionals, timeout=300) 
+        service_professionals = [{'id': service_professional['id'], 'name': service_professional['name'], 'email': service_professional['email'], 'description': service_professional['description'], 'experience': service_professional['experience'], 'date_created': datetime.fromisoformat(service_professional['date_created'])} for service_professional in service_professionals] 
 
     if len(service_professionals) <= 0:
         flash(f'No service professionals found for the query {query}!', 'danger')
@@ -658,7 +659,7 @@ def mark_request_as_complete(request_id):
    cache_key = f"customer_requests_{current_user.id}"
    redis_client.delete(cache_key)
    redis_client.delete("view_service_requests_key")
-   flash(f"Marked the service request as complete!", "danger")
+   flash(f"Marked the service request as complete!", "success")
    return redirect(url_for('main.submit_remarks', request_id=request_id))
 
 
@@ -880,14 +881,53 @@ def past_services():
     cached_data = get_cached_data(cache_key)
 
     if cached_data is not None:
-        past_services = cached_data 
+        past_services = [
+            {
+               **sr,
+               'date_of_request': datetime.fromisoformat(sr['date_of_request']),
+               'date_of_completion': datetime.fromisoformat(sr['date_of_completion'])
+            }
+            for sr in cached_data
+         ]
     else:
         if current_user.role == "customer":
             past_services = Service_Request.query.filter_by(customer_id=current_user.id, service_status="completed").all()
+            past_requests_serialized = [
+               {
+                  **sr.get_as_dict(),
+                  'date_of_request': sr.date_of_request.isoformat() if isinstance(sr.date_of_request, datetime) else sr.date_of_request,
+                  'date_of_completion': sr.date_of_completion.isoformat() if isinstance(sr.date_of_completion, datetime) else sr.date_of_completion,
+                  'service_name': sr.service.name if sr.service.name else '',
+                  'service_professional_name': sr.service_professional.username if sr.service_professional else '',
+                  'customer_name': sr.customer.username if sr.customer else '',
+
+               }
+               for sr in past_services
+            ]
         else:
             past_services = Service_Request.query.filter_by(service_professional_id=current_user.id, service_status="completed").all()
+            past_requests_serialized = [
+               {
+                  **sr.get_as_dict(),
+                  'date_of_request': sr.date_of_request.isoformat() if isinstance(sr.date_of_request, datetime) else sr.date_of_request,
+                  'date_of_completion': sr.date_of_completion.isoformat() if isinstance(sr.date_of_completion, datetime) else sr.date_of_completion,
+                  'service_name': sr.service.name if sr.service.name else '',
+                  'service_professional_name': sr.service_professional.username if sr.service_professional else '',
+                  'customer_name': sr.customer.username if sr.customer else '',
 
-        cache_data(cache_key, past_services, timeout=300)
+               }
+               for sr in past_services
+            ]
+
+        cache_data(cache_key, past_requests_serialized, timeout=300)
+        past_services =  [
+                    {
+                        **sr,
+                        'date_of_request': datetime.fromisoformat(sr['date_of_request']),
+                        'date_of_completion': datetime.fromisoformat(sr['date_of_completion'])
+                    }
+                for sr in get_cached_data(cache_key) # type: ignore
+            ]
 
     return render_template("past_services.html", past_services=past_services)
 
