@@ -38,7 +38,6 @@ class Customer(db.Model, UserMixin):
     password = db.Column(db.String(60), nullable=False)
     role = "customer"
 
-    # Relationship to Service_Request
     service_requests = db.relationship('Service_Request', back_populates='customer', lazy="joined")
 
     def __repr__(self):
@@ -58,7 +57,6 @@ class Service(db.Model):
     price = db.Column(db.String(100), nullable=False)
     description = db.Column(db.Text, nullable=False)
 
-    # Relationship to Service_Request
     service_requests = db.relationship('Service_Request', back_populates='service', lazy="joined")
 
     def __repr__(self):
@@ -82,7 +80,6 @@ class Service_Professional(db.Model, UserMixin):
     image_file = db.Column(db.String(20), nullable=False, default='default.jpg')
     password = db.Column(db.String(60), nullable=False)
 
-    # Foreign key to relate to Service
     service_id = db.Column(db.Integer, db.ForeignKey('service.id'), nullable=False)
     service_requests = db.relationship('Service_Request', back_populates='service_professional', lazy="joined")
     role = "service_professional"
@@ -104,12 +101,10 @@ class Service_Request(db.Model):
     date_of_completion = db.Column(db.DateTime, nullable=False)
     service_status = db.Column(db.String(100), nullable=False)
 
-    # Foreign keys
     customer_id = db.Column(db.Integer, db.ForeignKey('customer.id'), nullable=False)
     service_professional_id = db.Column(db.Integer, db.ForeignKey('service_professional.id'), nullable=True)
     service_id = db.Column(db.Integer, db.ForeignKey('service.id'), nullable=False)  # Foreign key for Service
 
-    # Relationships
     customer = db.relationship('Customer', back_populates='service_requests',lazy='joined')
     service_professional = db.relationship('Service_Professional', back_populates='service_requests',lazy='joined')
     service = db.relationship('Service', back_populates='service_requests',lazy='joined')
@@ -128,7 +123,6 @@ class Remarks(db.Model):
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     remarks = db.Column(db.String(100), nullable=False)
 
-    # Foreign key
     service_request_id = db.Column(db.Integer, db.ForeignKey('service_request.id'), nullable=False)
 
     def __repr__(self):

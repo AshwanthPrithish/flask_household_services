@@ -1,10 +1,13 @@
-from flask_project import db, bcrypt, create_app
+from flask_project import db, bcrypt, app
 from flask_project.models import Admin, Customer, Service, Service_Request, Service_Professional
 
-app = create_app()
+with app.app_context():
+    db.create_all()
+
 def db_setup_rbac():
     with app.app_context():
-        if not Admin.query.first():
+        admin_list = Admin.query.all()
+        if not admin_list:
             # Create an admin user
             hashed_password = bcrypt.generate_password_hash('admin').decode('utf-8')
             admin_user = Admin(id=-1, username='admin', email='admin@test.com', password=hashed_password) # type: ignore

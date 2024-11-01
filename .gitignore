@@ -123,6 +123,11 @@ celerybeat.pid
 *.db
 *.rdb
 
+# static content
+*.png
+*.jpeg
+*.csv
+
 # Environments
 .env
 .venv

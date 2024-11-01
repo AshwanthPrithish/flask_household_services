@@ -6,7 +6,7 @@
     <div class="container">
         {% if current_user.role == 'customer' %}
                 <div>
-                    <a class="btn btn-secondary btn-sm m-1" href="{{ url_for('main.request_service', service_id=service.id) }}">Request This Service</a>
+                    <a class="btn btn-secondary btn-sm m-1" href="{{ url_for('request_service', service_id=service.id) }}">Request This Service</a>
                 </div>
         {% endif %}
         <b>Name: </b>{{ service['name'] }}<br />

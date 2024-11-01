@@ -120,27 +120,9 @@ class ServiceForm(FlaskForm):
     submit = SubmitField()
 
 class ServiceRequestForm(FlaskForm):
-    date_of_request = DateTimeField('Date of Request', format="%d-%m-%Y", validators=[DataRequired()])
+    date_of_request = DateTimeField('Date of Request(dd-mm-yyyy)', format="%d-%m-%Y", validators=[DataRequired()])
     request_duration = StringField('Period of Borrowing/days/weeks):(Eg: Enter "7 hours,6 days, 8 weeks" to borrow for 7 hours, 6 days, and 8 weeks', validators=[DataRequired()])
     submit = SubmitField()
-
-# class BookRequestForm(FlaskForm):
-#     request_duration = StringField('Period of Borrowing/days/weeks):(Eg: Enter "7 hours,6 days, 8 weeks" to borrow for 7 hours, 6 days, and 8 weeks', validators=[DataRequired()])
-#     submit = SubmitField()
-    
-# class BookAddForm(FlaskForm):
-#     title = StringField('Title', validators=[DataRequired()])
-#     author = StringField('Author', validators=[DataRequired()])
-#     lang = StringField('Language', validators=[DataRequired()])
-#     content = TextAreaField('Content', validators=[DataRequired()])
-#     rating = IntegerField('Rating', validators=[DataRequired()])
-#     release_year = DateTimeField('Release Year(yyyy)', format="%Y", validators=[DataRequired()])
-#     submit = SubmitField()
-
-
-# class BookRequestForm(FlaskForm):
-#     request_duration = StringField('Period of Borrowing/days/weeks):(Eg: Enter "7 hours,6 days, 8 weeks" to borrow for 7 hours, 6 days, and 8 weeks', validators=[DataRequired()])
-#     submit = SubmitField()
 
 class RemarkForm(FlaskForm):
     remark = StringField('Remark for Service', validators=[DataRequired()])

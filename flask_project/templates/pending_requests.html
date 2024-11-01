@@ -19,7 +19,7 @@
             <p style="margin-left: 5px;">Accept request <b>{{ request['service_name'] }}</b> from customer <b>{{ request['customer_name'] }}</b>?</p>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
-                <form action="{{ url_for('main.accept_request', request_id=request['request_id'], service_professional_id=current_user.id) }}" method="POST">
+                <form action="{{ url_for('accept_request', request_id=request['request_id'], service_professional_id=current_user.id) }}" method="POST">
                 <input type="submit" class="btn btn-danger" value="Accept" />
                 </form>
             </div>
@@ -39,7 +39,7 @@
             <p style="margin-left: 5px;">Reject request for service <b>{{ request['service_name'] }}</b> from customer <b>{{ request['customer_name'] }}</b>?</p>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
-                <form action="{{ url_for('main.reject_request', request_id=request['request_id'], service_professional_id=current_user.id) }}" method="POST">
+                <form action="{{ url_for('reject_request', request_id=request['request_id'], service_professional_id=current_user.id) }}" method="POST">
                 <input type="submit" class="btn btn-danger" value="Reject" />
                 </form>
             </div>
