@@ -91,6 +91,11 @@ def about_us():
 def contact():
   return render_template("contact.html", title="Contact")
 
+@app.route("/fetch-services")
+def fetch_services():
+  services = Service.query.all()
+  return jsonify([service.get_as_dict() for service in services]), 200
+
 
 @app.route("/logout", methods=["POST"])
 @login_required
@@ -117,7 +122,6 @@ def admin_login():
                 return jsonify({'message': 'Already logged in as admin', 'success': True}), 200
             else:
                 return jsonify({'message': 'Access Denied! You do not have permission to view this page.', 'success': False}), 403
-
         if form.validate_on_submit():
             admin = Admin.query.filter_by(email=form.email.data).first()
             if admin and bcrypt.check_password_hash(admin.password, form.password.data):
@@ -141,7 +145,7 @@ def admin_login():
 
         else:
             errors = {field: form.errors.get(field, []) for field in form.errors}
-            return jsonify({'errors': errors, 'success': False}), 200
+            return jsonify({'errors': errors, 'success': False}), 400
 
     except Exception as e:
         return jsonify({'message': str(e), 'success': False}), 500
@@ -253,24 +257,53 @@ def view_service_requests():
        flash("Access Denied! You do not have permission to view this page.", "danger")
        return redirect(url_for("home"))
 
-@app.route("/register", methods=['GET', 'POST'])
+@app.route("/register", methods=['POST'])
 def register():
-  if current_user.is_authenticated:
-    if current_user.role == "customer":
-       return redirect(url_for('home'))
-    else:
-       flash("Access Denied! You do not have permission to view this page.", "danger")
-       return redirect(url_for("home"))
-  form = RegistrationForm()
-  if form.validate_on_submit():
-    hashed_password = bcrypt.generate_password_hash(form.password.data).decode('utf-8')
-    customer = Customer(username=form.username.data, email=form.email.data, address=form.address.data, contact=form.contact.data,password=hashed_password) # type: ignore
-    db.session.add(customer)
-    db.session.commit()
+    if current_user.is_authenticated:
+        if current_user.role == "customer":
+            return jsonify({'redirect': url_for('home')}), 200
+        else:
+            return jsonify({'message': "Access Denied! You do not have permission to view this page."}), 403
 
-    flash(f'Your customer Account has been created!', 'success')
-    return redirect(url_for("login"))
-  return render_template("register.html", title="Register", form=form)
+    data = request.get_json()
+    form = RegistrationForm(data=data)
+    
+    if form.validate_on_submit():
+        # Check for uniqueness
+        existing_user = Customer.query.filter(
+            (Customer.username == form.username.data) |
+            (Customer.email == form.email.data) |
+            (Customer.contact == form.contact.data)
+        ).first()
+
+        if existing_user:
+            if existing_user.username == form.username.data:
+                return jsonify({'message': 'Username already exists.'}), 400
+            if existing_user.email == form.email.data:
+                return jsonify({'message': 'Email already exists.'}), 400
+            if existing_user.contact == form.contact.data:
+                return jsonify({'message': 'Contact number already exists.'}), 400
+        
+        hashed_password = bcrypt.generate_password_hash(form.password.data).decode('utf-8')
+        customer = Customer(
+            username=form.username.data, # type: ignore
+            email=form.email.data, # type: ignore
+            address=form.address.data, # type: ignore
+            contact=form.contact.data, # type: ignore
+            password=hashed_password # type: ignore
+        )
+
+        try:
+            with app.app_context():
+                db.session.add(customer)
+                db.session.commit()
+
+            return jsonify({'message': f'Account created for {form.username.data}!'}), 201
+        except Exception as e:
+            return jsonify({'message': str(e)}), 500
+        
+    errors = {field: form.errors.get(field, []) for field in form.errors}
+    return jsonify({'errors': errors}), 400
 
 @app.route("/login", methods=['GET', 'POST'])
 def login():
@@ -294,7 +327,6 @@ def login():
                 token = jwt.encode({'email': form.email.data, 'role': 'customer'}, app.config['SECRET_KEY'])
                 login_user(customer, remember=data['remember'])
 
-                # Cache session details
                 session.permanent = True
                 session['user_id'] = customer.id
                 session['role'] = 'customer'
@@ -312,7 +344,7 @@ def login():
 
         else:
             errors = {field: form.errors.get(field, []) for field in form.errors}
-            return jsonify({'errors': errors, 'success': False}), 200
+            return jsonify({'errors': errors, 'success': False}), 400
 
     except Exception as e:
         return jsonify({'message': str(e), 'success': False}), 500
@@ -337,25 +369,52 @@ def customer_dash():
        return redirect(url_for("home"))
    
 
-@app.route("/sp_register",methods=['GET', 'POST'])
+@app.route("/sp-register", methods=['POST'])
 def sp_register():
     if current_user.is_authenticated:
         if current_user.role == "service_professional":
-          return redirect(url_for('sp_dash'))
+            return jsonify({'redirect': url_for('sp_dash')}), 200
         else:
-          flash("Access Denied! You do not have permission to view this page.", "danger")
-          return redirect(url_for("home"))
-    form = SPRegistrationForm()
-    services = Service.query.all()
-    form.service.choices = [service.name for service in services]
+            return jsonify({'message': "Access Denied! You do not have permission to view this page."}), 403
+
+    data = request.get_json()
+    form = SPRegistrationForm(data=data)
+
     if form.validate_on_submit():
-       hashed_password = bcrypt.generate_password_hash(form.password.data).decode('utf-8')
-       service_professional = Service_Professional(username=form.username.data, email=form.email.data, password=hashed_password, description=form.description.data, experience=form.experience.data, service_id=Service.query.filter_by(name=form.service.data).first().id) # type: ignore
-       db.session.add(service_professional)
-       db.session.commit()
-       flash(f'Account Created for Service professional {form.username.data}!', 'success')
-       return redirect(url_for("sp_login"))
-    return render_template("sp_register.html", title="Admin Register", form=form, services=services)
+        existing_user = Service_Professional.query.filter(
+            (Service_Professional.username == form.username.data) |
+            (Service_Professional.email == form.email.data)
+        ).first()
+
+        if existing_user:
+            if existing_user.username == form.username.data:
+                return jsonify({'message': 'Username already exists.'}), 400
+            if existing_user.email == form.email.data:
+                return jsonify({'message': 'Email already exists.'}), 400
+        hashed_password = bcrypt.generate_password_hash(form.password.data).decode('utf-8')
+        service = Service.query.filter_by(id=int(form.service.data)).first()
+        if not service:
+            return jsonify({'message': 'Selected service is invalid.'}), 400
+
+        service_professional = Service_Professional(
+            username=form.username.data, # type: ignore
+            email=form.email.data, # type: ignore
+            password=hashed_password, # type: ignore
+            description=form.description.data, # type: ignore
+            experience=form.experience.data, # type: ignore
+            service_id=service.id# type: ignore
+        )
+
+        try:
+            db.session.add(service_professional)
+            db.session.commit()
+            return jsonify({'message': f'Account created for Service Professional {form.username.data}!'}), 201
+        except Exception as e:
+            db.session.rollback()
+            return jsonify({'message': str(e)}), 500
+
+    errors = {field: form.errors.get(field, []) for field in form.errors}
+    return jsonify({'errors': errors}), 400
 
 
 @app.route("/sp-login", methods=['GET', 'POST'])
@@ -398,7 +457,7 @@ def sp_login():
 
         else:
             errors = {field: form.errors.get(field, []) for field in form.errors}
-            return jsonify({'errors': errors, 'success': False}), 200
+            return jsonify({'errors': errors, 'success': False}), 400
 
     except Exception as e:
         return jsonify({'message': str(e), 'success': False}), 500

@@ -43,7 +43,7 @@ class SPRegistrationForm(FlaskForm):
     confirm_password = PasswordField("Confirm Password", validators=[DataRequired(), EqualTo('password')])
     description = TextAreaField('Description', validators=[DataRequired(), Length(min=2, max=100)])
     experience = StringField('Experience', validators=[DataRequired(), Length(min=2, max=20)])
-    service = SelectField('Service', choices=[]) 
+    service = StringField('Service', validators=[DataRequired()]) 
     
     submit = SubmitField("Sign Up")
 

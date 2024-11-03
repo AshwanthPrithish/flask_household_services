@@ -93,15 +93,28 @@
             this.generalError = response.data.message;
           }
         } catch (error) {
+          if (error.response && error.response.data.errors) {
+            const errors = error.response.data.errors;
+            Object.keys(errors).forEach((key) => {
+              if(key == "email"){
+                this.emailError = errors[key][0];
+                this.clearErrorAfterDelay('emailError');
+              }
+              else if(key == "password"){
+                this.passwordError = errors[key][0];
+                this.clearErrorAfterDelay('passwordError');
+              }
+              else{
+                this.generalError = errors[key][0];
+                this.clearErrorAfterDelay('generalError');
+              } 
+      });
+          }
           if (error.response && error.response.data) {
             if (error.message && error.message=='Request failed with status code 401') {
               this.generalError = "Invalid Credentials";
               this.clearErrorAfterDelay('generalError');
             }
-           
-          } else {
-            this.generalError = 'An unexpected error occurred.';
-            this.clearErrorAfterDelay('generalError');
           }
         }
       },
@@ -123,6 +136,7 @@
   }
   .invalid-feedback {
     color: red;
+    display: block;
   }
   .badge-danger {
   background-color: red;
