@@ -15,7 +15,6 @@ import Login from './components/LoginPage.vue';
 import PastServices from './components/PastServices.vue';
 import PendingRequests from './components/PendingRequests.vue';
 import Register from './components/CustomerRegister.vue';
-import RemarksPage from './components/RemarksPage.vue';
 import SearchResultsService from './components/SearchResultsService.vue';
 import SearchResultsServiceProfessional from './components/SearchResultsServiceProfessional.vue';
 import ServicePage from './components/ServicePage.vue';
@@ -49,7 +48,7 @@ const routes = [
     { path: '/past-services', component: PastServices,meta: { requiresCustomerOrSPAuth: true } },
     { path: '/pending-requests', component: PendingRequests,meta: { requiresServiceProfessionalAuth: true } },
     { path: '/register', name: 'register', meta: { requiresGuest: true }, component: Register },
-    { path: '/remarks', component: RemarksPage },
+    { path: '/remarks', component: ViewRemarks },
     {
       path: '/search-results-service/:data',
       name: 'SearchResultsService',

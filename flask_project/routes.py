@@ -870,7 +870,7 @@ def remarks():
                 'remark': remark.remarks
             })
         cache_data(cache_key_remarks, f, timeout=300)
-    return render_template('view_remarks.html', f_list=f, title="remarks")
+    return jsonify(f)
 
 
 @app.route("/cancel/<int:request_id>", methods=['GET', 'POST'])
