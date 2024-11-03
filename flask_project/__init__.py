@@ -5,6 +5,8 @@ from flask_bcrypt import Bcrypt
 from flask_login import LoginManager
 from flask_session import Session
 from datetime import timedelta
+from flask_cors import CORS
+from flask_wtf.csrf import CSRFProtect
 import redis
 import configparser
 from celery import Celery
@@ -27,6 +29,7 @@ config.read_string(properties_content)
 
 app.config['SECRET_KEY'] = config.get('DEFAULT', 'secret_key')
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///site.db'
+app.config['WTF_CSRF_ENABLED'] = True
 
 app.config['MAIL_SERVER'] = config.get('DEFAULT', 'mail.server')
 app.config['MAIL_PORT'] = config.getint('DEFAULT', 'mail.port')
@@ -52,6 +55,8 @@ celery.conf.result_backend = 'redis://localhost:6379/2' # type: ignore
 celery.conf.timezone = 'Asia/Kolkata' # type: ignore
 celery.conf.enable_utc = False
 
+csrf = CSRFProtect(app)
+CORS(app, supports_credentials=True)
 db.init_app(app)
 mail.init_app(app)
 bcrypt.init_app(app)

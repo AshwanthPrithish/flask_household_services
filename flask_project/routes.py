@@ -9,7 +9,7 @@ import json
 
 from datetime import datetime, timedelta
 from PIL import Image
-from flask import render_template,flash, redirect, session, url_for, request, make_response, jsonify
+from flask import render_template,flash, redirect, session, url_for, request, jsonify
 from flask_project import db, bcrypt, mail, app, celery
 from flask_project.forms import AdminLoginForm, RegistrationForm, LoginForm, RemarkForm, SPLoginForm, SPRegistrationForm, SearchServiceForm, SearchServiceProfessionalForm, ServiceForm, ServiceRequestForm, UpdateCustomerAccount, UpdateSPAccount, UpdateServiceForm
 from flask_project.models import Admin, Customer, Service_Professional, Service, Service_Request, Remarks
@@ -19,6 +19,7 @@ from flask_project.auth_middleware import token_required
 from flask_mail import Message
 from flask_project.redis_client import redis_client
 from flask_project.tasks import export_as_csv
+from flask_wtf.csrf import CSRFProtect, generate_csrf
 
 def cache_data(key, data, timeout=300):
     """Store data in Redis with a timeout."""
@@ -30,6 +31,52 @@ def get_cached_data(key):
     if cached_data:
         return json.loads(cached_data) # type: ignore
     return None
+
+csrf = CSRFProtect(app)
+
+with app.app_context():
+  db.create_all()
+
+@app.route("/auth_status", methods=["GET"])
+def auth_status():
+    
+    csrf_token = generate_csrf()
+    if current_user.is_authenticated:
+        if current_user.role == 'customer':
+            customer = Customer.query.filter_by(id=current_user.id).first()
+            user_info = {
+                  'isAuthenticated': 'True',
+                  'role': current_user.role,
+                  'username':   customer.username, # type: ignore
+                  'email': customer.email, # type: ignore
+                  'csrf':csrf_token,
+                  'id': current_user.id
+            }
+        elif current_user.role == 'service_professional':
+            service_professional = Service_Professional.query.filter_by(id=current_user.id).first()
+            user_info = {
+                  'isAuthenticated': 'True',
+                  'role': current_user.role,
+                  'username':   service_professional.username, # type: ignore
+                  'email': service_professional.email, # type: ignore
+                  'csrf':csrf_token,
+                  'id': current_user.id
+            }
+        else: 
+            admin = Admin.query.filter_by(id=current_user.id).first()
+            user_info = {
+                  'isAuthenticated': 'True',
+                  'role': current_user.role,
+                  'username':   admin.username, # type: ignore
+                  'email': admin.email, # type: ignore
+                  'csrf':csrf_token,
+                  'id': current_user.id
+            }
+    else:
+        user_info = {'is_authenticated': False, "role": '', 'csrf': csrf_token, 'id':'null'}
+    
+    return jsonify(user_info)
+
 
 @app.route("/")
 @app.route("/home")
@@ -45,37 +92,60 @@ def contact():
   return render_template("contact.html", title="Contact")
 
 
-@app.route("/logout")
+@app.route("/logout", methods=["POST"])
 @login_required
 def logout():
-  logout_user()
-  return redirect(url_for('home'))
+    if current_user.is_authenticated:
+      logout_user()
+      return jsonify({"message": "Successfully logged out"}), 200
+    else:
+       return jsonify({"message": "Unexpected error"}), 200
 
 
 @app.route("/admin-login", methods=['GET', 'POST'])
 def admin_login():
-  form = AdminLoginForm()
-  if current_user.is_authenticated:
-    if current_user.role == "admin":
-       return redirect(url_for('home'))
-    else:
-       flash("Access Denied! You do not have permission to view this page.", "danger")
-       return redirect(url_for("home"))
-  if form.validate_on_submit():
-    admin = Admin.query.filter_by(email=form.email.data).first()
-    if admin and bcrypt.check_password_hash(admin.password, form.password.data):
-      login_user(admin, remember=form.remember.data)
+    try:
+        data = request.get_json()
+        if not data:
+            return jsonify({'message': 'No input data provided', 'success': False}), 400
 
-      session.permanent = True
-      session['user_id'] = admin.id
-      session['role'] = 'customer'
+        data['remember'] = True if data['remember'] == 'true' else False
+        form = AdminLoginForm(data=data)
 
-      flash(f'Your admin login was success!', 'success')
-      return redirect(url_for('admin_dash'))
-    else:
-      flash('Login unsuccessful, please check email, and password', 'danger')
-      
-  return render_template("admin_login.html", title="Login", form=form)
+        if current_user.is_authenticated:
+            if current_user.role == "admin":
+                return jsonify({'message': 'Already logged in as admin', 'success': True}), 200
+            else:
+                return jsonify({'message': 'Access Denied! You do not have permission to view this page.', 'success': False}), 403
+
+        if form.validate_on_submit():
+            admin = Admin.query.filter_by(email=form.email.data).first()
+            if admin and bcrypt.check_password_hash(admin.password, form.password.data):
+                token = jwt.encode({'email': form.email.data, 'role': 'admin'}, app.config['SECRET_KEY'])
+                login_user(admin, remember=data['remember'])
+
+                session.permanent = True
+                session['user_id'] = admin.id
+                session['role'] = 'admin'
+
+                return jsonify({
+                    'token': token,
+                    'success': True,
+                    'isAuthenticated': True,
+                    'role': current_user.role,
+                    'username': admin.username,
+                    'email': admin.email
+                }), 200
+            else:
+                return jsonify({'message': 'Invalid credentials', 'success': False}), 401
+
+        else:
+            errors = {field: form.errors.get(field, []) for field in form.errors}
+            return jsonify({'errors': errors, 'success': False}), 200
+
+    except Exception as e:
+        return jsonify({'message': str(e), 'success': False}), 500
+
 
 @app.route("/admin-dash", methods=['GET', 'POST'])
 @login_required
@@ -204,29 +274,48 @@ def register():
 
 @app.route("/login", methods=['GET', 'POST'])
 def login():
-  form = LoginForm()
-  if current_user.is_authenticated:
-    if current_user.role == "customer":
-       return redirect(url_for('home'))
-    else:
-       flash("Access Denied! You do not have permission to view this page.", "danger")
-       return redirect(url_for("home"))
-  if form.validate_on_submit():
-    customer = Customer.query.filter_by(email=form.email.data).first()
-    if customer and bcrypt.check_password_hash(customer.password, form.password.data):
-      login_user(customer, remember=form.remember.data)
+    try:
+        data = request.get_json()
+        if not data:
+            return jsonify({'message': 'No input data provided', 'success': False}), 400
 
-      session.permanent = True
-      session['user_id'] = customer.id
-      session['role'] = 'customer'
+        data['remember'] = True if data['remember'] == 'true' else False
+        form = LoginForm(data=data)
 
-      flash(f'Your customer login was success!', 'success')
-      return redirect(url_for('customer_dash'))
-    else:
-      flash('Login unsuccessful, please check email, and password', 'danger')
-      
-  return render_template("login.html", title="Login", form=form)
+        if current_user.is_authenticated:
+            if current_user.role == "customer":
+                return jsonify({'message': 'Already logged in as customer', 'success': True}), 200
+            else:
+                return jsonify({'message': 'Access Denied! You do not have permission to view this page.', 'success': False}), 403
 
+        if form.validate_on_submit():
+            customer = Customer.query.filter_by(email=form.email.data).first()
+            if customer and bcrypt.check_password_hash(customer.password, form.password.data):
+                token = jwt.encode({'email': form.email.data, 'role': 'customer'}, app.config['SECRET_KEY'])
+                login_user(customer, remember=data['remember'])
+
+                # Cache session details
+                session.permanent = True
+                session['user_id'] = customer.id
+                session['role'] = 'customer'
+
+                return jsonify({
+                    'token': token,
+                    'success': True,
+                    'isAuthenticated': True,
+                    'role': current_user.role,
+                    'username': customer.username,
+                    'email': customer.email
+                }), 200
+            else:
+                return jsonify({'message': 'Invalid credentials', 'success': False}), 401
+
+        else:
+            errors = {field: form.errors.get(field, []) for field in form.errors}
+            return jsonify({'errors': errors, 'success': False}), 200
+
+    except Exception as e:
+        return jsonify({'message': str(e), 'success': False}), 500
 
 @app.route("/customer-dash", methods=['GET', 'POST'])
 @login_required
@@ -271,28 +360,49 @@ def sp_register():
 
 @app.route("/sp-login", methods=['GET', 'POST'])
 def sp_login():
-  form = SPLoginForm()
-  if current_user.is_authenticated:
-    if current_user.role == "service_professional":
-       return redirect(url_for('sp_dash'))
-    else:
-       flash(f"Access Denied! You do not have permission to view this page.", "danger")
-       return redirect(url_for("home"))
-  
-  if form.validate_on_submit():
-    service_professional = Service_Professional.query.filter_by(email=form.email.data).first()
-    if service_professional and bcrypt.check_password_hash(service_professional.password, form.password.data):
-      login_user(service_professional, remember=form.remember.data)
+    try:
+        data = request.get_json()
+        if not data:
+            return jsonify({'message': 'No input data provided', 'success': False}), 400
 
-      session.permanent = True
-      session['user_id'] = service_professional.id
-      session['role'] = 'service_professional'
+        data['remember'] = True if data['remember'] == 'true' else False
+        form = SPLoginForm(data=data)
 
-      flash('Login successful', 'success')
-      return redirect(url_for('sp_dash'))
-    else:
-      flash('Login unsuccessful, please check email, and password', 'danger')
-  return render_template("sp_login.html", title="Admin Login", form=form)
+        if current_user.is_authenticated:
+            if current_user.role == "service_professional":
+                return jsonify({'message': 'Already logged in as service professional', 'success': True}), 200
+            else:
+                return jsonify({'message': 'Access Denied! You do not have permission to view this page.', 'success': False}), 403
+
+        if form.validate_on_submit():
+            service_professional = Service_Professional.query.filter_by(email=form.email.data).first()
+            if service_professional and bcrypt.check_password_hash(service_professional.password, form.password.data):
+                token = jwt.encode({'email': form.email.data, 'role': 'service_professional'}, app.config['SECRET_KEY'])
+                login_user(service_professional, remember=data['remember'])
+
+                # Cache session details
+                session.permanent = True
+                session['user_id'] = service_professional.id
+                session['role'] = 'service_professional'
+
+                return jsonify({
+                    'token': token,
+                    'success': True,
+                    'isAuthenticated': True,
+                    'role': current_user.role,
+                    'username': service_professional.username,
+                    'email': service_professional.email
+                }), 200
+            else:
+                return jsonify({'message': 'Invalid credentials', 'success': False}), 401
+
+        else:
+            errors = {field: form.errors.get(field, []) for field in form.errors}
+            return jsonify({'errors': errors, 'success': False}), 200
+
+    except Exception as e:
+        return jsonify({'message': str(e), 'success': False}), 500
+
    
 
 @app.route("/sp_dash")
