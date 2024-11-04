@@ -55,6 +55,9 @@
                 <router-link class="nav-link" to="/new-service">New Service</router-link>
               </li>
               <li class="nav-item">
+                <router-link class="nav-link" to="/admin-dash">Admin Dashboard</router-link>
+              </li>
+              <li class="nav-item">
                 <router-link class="nav-link" to="/view-customers">View All Customers</router-link>
               </li>
               <li class="nav-item">

@@ -338,24 +338,13 @@ def login():
     except Exception as e:
         return jsonify({'message': str(e), 'success': False}), 500
 
-@app.route("/customer-dash", methods=['GET', 'POST'])
+@app.route("/customer-dash", methods=['GET'])
 @login_required
 def customer_dash():
-   if current_user.role == "customer":
-      form = SearchServiceForm()
-      if form.validate_on_submit():
-        service = form.service.data
-        return redirect(url_for('search_results_service', query=service))
-      
-      form1 = SearchServiceProfessionalForm()
-      if form1.validate_on_submit():
-          service_professional = form1.service_professional.data
-          return redirect(url_for('search_results_service_professional', query=service_professional))
-      return render_template("customer_dashboard.html", title="Customer Dashboard", form=form, form1=form1)
-
-   else:
-       flash("Access Denied! You do not have permission to view this page.", "danger")
-       return redirect(url_for("home"))
+    if current_user.role == "customer":
+        return jsonify(username=current_user.username) 
+    else:
+        return jsonify(error="Access Denied!"), 403
    
 
 @app.route("/sp-register", methods=['POST'])
@@ -453,24 +442,13 @@ def sp_login():
 
    
 
-@app.route("/sp_dash")
+@app.route("/sp-dash", methods=['GET'])
+@login_required
 def sp_dash():
     if current_user.role == "service_professional":
-      form = SearchServiceForm()
-      if form.validate_on_submit():
-        service = form.service.data
-        return redirect(url_for('search_results_service', query=service))
-      
-      form1 = SearchServiceProfessionalForm()
-      if form1.validate_on_submit():
-          service_professional = form1.service_professional.data
-          return redirect(url_for('search_results_service_professional', query=service_professional))
-      return render_template("sp_dashboard.html", title="Service Professional Dashboard", form=form, form1=form1)
-
+        return jsonify(username=current_user.username) 
     else:
-       flash("Access Denied! You do not have permission to view this page.", "danger")
-       return redirect(url_for("home"))
-
+        return jsonify(error="Access Denied!"), 403
 
 @app.route("/search-results-service", methods=["POST"])
 @login_required
