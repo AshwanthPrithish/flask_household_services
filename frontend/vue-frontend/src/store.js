@@ -18,7 +18,8 @@ export default new Vuex.Store({
     username:'',
     token: null,
     csrf: '',
-    id:''
+    id:'',
+    searchResults: null, 
   },
   mutations: {
     SET_AUTH(state, content) {
@@ -41,6 +42,9 @@ export default new Vuex.Store({
       state.isAuthenticated = false;
       state.role = null;
       state.token = null;
+    },
+    SET_SEARCH_RESULTS(state, results) { 
+      state.searchResults = results;
     }
   },
   actions: {
@@ -65,6 +69,9 @@ export default new Vuex.Store({
       } catch (error) {
         console.error('Error logging out:', error);
       }
+    },
+    setSearchResults({ commit }, results) { 
+      commit('SET_SEARCH_RESULTS', results);
     }
 }
 });

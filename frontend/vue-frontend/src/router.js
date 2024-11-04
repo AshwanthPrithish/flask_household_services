@@ -50,16 +50,14 @@ const routes = [
     { path: '/register', name: 'register', meta: { requiresGuest: true }, component: Register },
     { path: '/remarks', component: ViewRemarks },
     {
-      path: '/search-results-service/:data',
+      path: '/search-results-service',
       name: 'SearchResultsService',
       component: SearchResultsService,
-      props: true
     },
     {
-      path: '/search-results-service-professional/:data',
+      path: '/search-results-service-professional',
       name: 'SearchResultsServiceProfessional',
       component: SearchResultsServiceProfessional,
-      props: true
     },
     {
       path: '/service/:service_id',

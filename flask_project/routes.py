@@ -151,24 +151,13 @@ def admin_login():
         return jsonify({'message': str(e), 'success': False}), 500
 
 
-@app.route("/admin-dash", methods=['GET', 'POST'])
+@app.route("/admin-dash", methods=['GET'])
 @login_required
 def admin_dash():
-   if current_user.role == "admin":
-      form = SearchServiceForm()
-      if form.validate_on_submit():
-        service = form.service.data
-        return redirect(url_for('search_results_service', query=service))
-      
-      form1 = SearchServiceProfessionalForm()
-      if form1.validate_on_submit():
-          service_professional = form1.service_professional.data
-          return redirect(url_for('search_results_service_professional', query=service_professional))
-      return render_template("admin_dashboard.html", title="Admin Dashboard", form=form, form1=form1)
-
-   else:
-       flash("Access Denied! You do not have permission to view this page.", "danger")
-       return redirect(url_for("home"))
+    if current_user.role == "admin":
+        return jsonify(username=current_user.username) 
+    else:
+        return jsonify(error="Access Denied!"), 403
    
 
 @app.route("/view_customers")
@@ -483,9 +472,10 @@ def sp_dash():
        return redirect(url_for("home"))
 
 
-@app.route("/search-results-service/<query>")
+@app.route("/search-results-service", methods=["POST"])
 @login_required
-def search_results_service(query):
+def search_results_service():
+    query = request.get_json().get('service')
     cache_key = f"search_results_service:{query.lower()}"
     
     cached_services = get_cached_data(cache_key)
@@ -499,17 +489,16 @@ def search_results_service(query):
         cache_data(cache_key, services, timeout=300)  
 
     if len(services) <= 0:
-        flash(f'No services found for the query {query}!', 'danger')
-        return redirect(url_for('home'))
+        return jsonify({'error': f'No services found for the query {query}!'}), 404
 
-    return render_template('search_results_service.html', services=services, title='Search by Service Name')
+    return jsonify(services)
 
 
-@app.route("/search-results-service-professional/<query>")
+@app.route("/search-results-service-professional", methods=["POST"])
 @login_required
-def search_results_service_professional(query):
+def search_results_service_professional():
+    query = request.get_json().get('service_professional')
     cache_key = f"search_results_service_professional:{query.lower()}"
-
     cached_service_professionals = get_cached_data(cache_key)
     if cached_service_professionals:
         service_professionals = cached_service_professionals  
@@ -518,14 +507,13 @@ def search_results_service_professional(query):
         service_professionals = [{'id': service_professional.id, 'name': service_professional.username, 'email': service_professional.email, 'description': service_professional.description, 'experience': service_professional.experience, 'date_created': datetime.isoformat(service_professional.date_created)} for service_professional in service_professionals]
         service_professionals.sort(key=lambda x: x.get('id'), reverse=False) # type: ignore
         
-        cache_data(cache_key, service_professionals, timeout=300) 
-        service_professionals = [{'id': service_professional['id'], 'name': service_professional['name'], 'email': service_professional['email'], 'description': service_professional['description'], 'experience': service_professional['experience'], 'date_created': datetime.fromisoformat(service_professional['date_created'])} for service_professional in service_professionals] 
+        cache_data(cache_key, service_professionals, timeout=300)
 
     if len(service_professionals) <= 0:
-        flash(f'No service professionals found for the query {query}!', 'danger')
-        return redirect(url_for('home'))
+        return jsonify({'error': f'No service professionals found for the query {query}!'}), 404
 
-    return render_template('search_results_service_professional.html', service_professionals=service_professionals, title='Search by Service Professional Name')
+    return jsonify(service_professionals)
+
 
 def save_picture(form_picture, role):
    random_hex = secrets.token_hex(8)
