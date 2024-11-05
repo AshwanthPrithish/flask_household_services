@@ -160,7 +160,7 @@ def admin_dash():
         return jsonify(error="Access Denied!"), 403
    
 
-@app.route("/view_customers")
+@app.route("/view-customers")
 @login_required
 def view_customers():
    if current_user.role == "admin":
@@ -171,15 +171,15 @@ def view_customers():
       else:
             customers = Customer.query.filter(not_(Customer.username.ilike('%dummy%'))).all()
             customers_serialized = [c.get_as_dict() for c in customers]
-            cache_data(cache_key, customers_serialized)  # Cache the serialized data
-      return render_template("view_customers.html", title="View Customers", customers=customers)
+            cache_data(cache_key, customers_serialized)  
+            cached_customers =  get_cached_data(cache_key)
+      return jsonify(cached_customers), 200
    
    else:
-       flash("Access Denied! You do not have permission to view this page.", "danger")
-       return redirect(url_for("home"))
+      return jsonify(error="Access Denied!"), 403
 
 
-@app.route("/view_service_professionals")
+@app.route("/view-service-professionals")
 @login_required
 def view_service_professionals():
    if current_user.role == "admin":
@@ -193,15 +193,15 @@ def view_service_professionals():
       else:
             service_professionals = Service_Professional.query.filter(not_(Service_Professional.username.ilike('%dummy%'))).all()
             service_professionals_serialized = [ {**sp.get_as_dict(), 'date_created': sp.date_created.isoformat()}  for sp in service_professionals]
-            cache_data(cache_key, service_professionals_serialized)  # Cache the serialized
-      return render_template("view_service_professionals.html", title="View Service Professionals", service_professionals=service_professionals)
+            cache_data(cache_key, service_professionals_serialized)  
+            cached_sps =  get_cached_data(cache_key)
+      return jsonify(cached_sps), 200
    
    else:
-       flash("Access Denied! You do not have permission to view this page.", "danger")
-       return redirect(url_for("home"))
+       return jsonify(error="Access Denied!"), 403
    
 
-@app.route("/view_service_requests")
+@app.route("/view-service-requests")
 @login_required
 def view_service_requests():
    if current_user.role == "admin":
@@ -240,11 +240,11 @@ def view_service_requests():
                     }
                 for sr in get_cached_data(cache_key) # type: ignore
             ]
-      return render_template("view_service_requests.html", title="View Service Requests", service_requests=service_requests)
+            cached_service_requests = service_requests
+      return jsonify(cached_service_requests), 200
    
    else:
-       flash("Access Denied! You do not have permission to view this page.", "danger")
-       return redirect(url_for("home"))
+       return jsonify(error="Access Denied!"), 403
 
 @app.route("/register", methods=['POST'])
 def register():
