@@ -9,7 +9,7 @@ import json
 
 from datetime import datetime, timedelta
 from PIL import Image
-from flask import render_template,flash, redirect, session, url_for, request, jsonify
+from flask import render_template,flash, redirect, session, url_for, request, jsonify,send_from_directory, current_app
 from flask_project import db, bcrypt, mail, app, celery
 from flask_project.forms import AdminLoginForm, RegistrationForm, LoginForm, RemarkForm, SPLoginForm, SPRegistrationForm, SearchServiceForm, SearchServiceProfessionalForm, ServiceForm, ServiceRequestForm, UpdateCustomerAccount, UpdateSPAccount, UpdateServiceForm
 from flask_project.models import Admin, Customer, Service_Professional, Service, Service_Request, Remarks
@@ -493,6 +493,12 @@ def search_results_service_professional():
     return jsonify(service_professionals)
 
 
+
+@app.route('/media/<path:filename>')
+def serve_static(filename):
+    return send_from_directory(current_app.static_folder, filename) # type: ignore
+
+
 def save_picture(form_picture, role):
    random_hex = secrets.token_hex(8)
    _, ext = os.path.splitext(form_picture.filename)
@@ -505,6 +511,36 @@ def save_picture(form_picture, role):
    i.save(picture_path)
    
    return picture_fn
+
+@app.route("/customer-account", methods=['GET', 'POST'])
+@login_required
+def customer_account():
+    if current_user.role != 'customer':
+        return jsonify({"error": "Unauthorized"}), 403
+
+    if request.method == 'GET':
+        return jsonify({
+            "username": current_user.username,
+            "email": current_user.email,
+            "address": current_user.address,
+            "contact": current_user.contact,
+            "profilePictureUrl": f'profile_pics/{current_user.role}_pics/{current_user.image_file}'
+        }), 200
+
+    elif request.method == 'POST':
+        data = request.form
+        if 'picture' in request.files:
+            picture_file = save_picture(request.files['picture'], 'customer_pics')
+            current_user.image_file = picture_file
+        current_user.username = data.get('username', current_user.username)
+        current_user.email = data.get('email', current_user.email)
+        current_user.address = data.get('address', current_user.address)
+        current_user.contact = data.get('contact', current_user.contact)
+        db.session.commit()
+        
+        redis_client.delete("view_customers_key")
+        return jsonify({"message": "Account updated successfully"}), 200
+    return jsonify({"error": "Bad Request"}), 400
 
 @app.route("/account", methods=["GET", "POST"])
 @login_required

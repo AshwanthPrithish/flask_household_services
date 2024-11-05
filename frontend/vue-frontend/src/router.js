@@ -3,7 +3,6 @@ import Router from 'vue-router';
 import AdminDash from './components/AdminDash.vue';
 import AdminLogin from './components/AdminLogin.vue';
 import AboutPage from './components/AboutPage.vue';
-import Account from './components/AccountPage.vue';
 import ContactPage from './components/ContactPage.vue';
 import CreateService from './components/CreateService.vue';
 import CustomerAccount from './components/CustomerAccount.vue';
@@ -19,7 +18,7 @@ import SearchResultsService from './components/SearchResultsService.vue';
 import SearchResultsServiceProfessional from './components/SearchResultsServiceProfessional.vue';
 import ServicePage from './components/ServicePage.vue';
 import ServicesPage from './components/ServicesPage.vue';
-import SpDash from './components/SpDash.vue';
+import ServiceProfessionalAccount from './components/ServiceProfessionalAccount.vue';
 import SpLogin from './components/SpLogin.vue';
 import SpRegister from './components/SpRegister.vue';
 import SubmitRemark from './components/SubmitRemark.vue';
@@ -35,7 +34,6 @@ Vue.use(Router);
 const routes = [
     { path: '/', name: 'home', component: HomePage },
     { path: '/about', component: AboutPage },
-    { path: '/account', component: Account },
     { path: '/admin-dash', name: 'admin-dash', meta: { requiresAdminAuth: true }, component: AdminDash },
     { path: '/admin-login', name: 'admin-login', meta: { requiresGuest: true }, component: AdminLogin },
     { path: '/contact', component: ContactPage },
@@ -46,6 +44,7 @@ const routes = [
     { path: '/graph', component: Graph },
     { path: '/login', name: 'login', meta: { requiresGuest: true }, component: Login },
     { path: '/past-services', component: PastServices,meta: { requiresCustomerOrSPAuth: true } },
+    { path: '/sp-account',name: 'sp-account', component: ServiceProfessionalAccount,meta: { requiresServiceProfessionalAuth: true } },
     { path: '/pending-requests', component: PendingRequests,meta: { requiresServiceProfessionalAuth: true } },
     { path: '/register', name: 'register', meta: { requiresGuest: true }, component: Register },
     { path: '/remarks', component: ViewRemarks },
@@ -66,7 +65,6 @@ const routes = [
       props: true,
     },
     { path: '/services', component: ServicesPage },
-    { path: '/sp-dash', component: SpDash, meta:{ requiresServiceProfessionalAuth: true } },
     { path: '/sp-login', name: 'sp-login', meta: { requiresGuest: true }, component: SpLogin },
     { path: '/sp-register', name: 'sp-register', meta: { requiresGuest: true }, component: SpRegister },
     { path: '/submit-remark', component: SubmitRemark, meta:{ requiresCustomerAuth: true } },

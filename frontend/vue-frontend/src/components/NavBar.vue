@@ -30,7 +30,7 @@
                 <router-link class="nav-link" to="/past-services">View Past Services</router-link>
               </li>
               <li class="nav-item">
-                <router-link class="nav-link" to="/account">Account</router-link>
+                <router-link class="nav-link" to="/customer-account">Account</router-link>
               </li>
             </template>
             <template v-else-if="role === 'service_professional'">
@@ -47,7 +47,7 @@
                 <router-link class="nav-link" to="/past-services">View Past Services</router-link>
               </li>
               <li class="nav-item">
-                <router-link class="nav-link" to="/account">Account</router-link>
+                <router-link class="nav-link" to="/sp-account">Account</router-link>
               </li>
             </template>
             <template v-else>
