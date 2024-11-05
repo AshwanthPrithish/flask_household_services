@@ -1,14 +1,15 @@
 import Vue from 'vue';
 import Router from 'vue-router';
 import AdminDash from './components/AdminDash.vue';
+import AdminGraph from './components/AdminGraphView.vue';
 import AdminLogin from './components/AdminLogin.vue';
 import AboutPage from './components/AboutPage.vue';
 import ContactPage from './components/ContactPage.vue';
 import CreateService from './components/CreateService.vue';
 import CustomerAccount from './components/CustomerAccount.vue';
 import CustomerDash from './components/CustomerDash.vue';
+import CustomerGraph from './components/CustomerGraphView.vue';
 import CustomerRequests from './components/CustomerRequests.vue';
-import Graph from './components/GraphView.vue';
 import HomePage from './components/HomePage.vue';
 import Login from './components/LoginPage.vue';
 import PastServices from './components/PastServices.vue';
@@ -22,6 +23,7 @@ import ServiceProfessionalAccount from './components/ServiceProfessionalAccount.
 import SpDash from './components/SpDash.vue';
 import SpLogin from './components/SpLogin.vue';
 import SpRegister from './components/SpRegister.vue';
+import SPGraphView from './components/SPGraphView.vue';
 import SubmitRemark from './components/SubmitRemark.vue';
 import UpdateService from './components/UpdateService.vue';
 import ViewCustomers from './components/ViewCustomers.vue';
@@ -36,17 +38,19 @@ const routes = [
     { path: '/', name: 'home', component: HomePage },
     { path: '/about', component: AboutPage },
     { path: '/admin-dash', name: 'admin-dash', meta: { requiresAdminAuth: true }, component: AdminDash },
+    { path: '/admin-graph', meta: { requiresAdminAuth: true }, component: AdminGraph  },
     { path: '/admin-login', name: 'admin-login', meta: { requiresGuest: true }, component: AdminLogin },
     { path: '/contact', component: ContactPage },
     { path: '/create-service', component: CreateService,meta: { requiresAdminAuth: true } },
     { path: '/customer-account', name: 'customer-account', meta: { requiresCustomerAuth: true }, component: CustomerAccount },
     { path: '/customer-dash', name: 'customer-dash', meta: { requiresCustomerAuth: true }, component: CustomerDash },
     { path: '/customer-requests', component: CustomerRequests,meta: { requiresCustomerAuth: true } },
-    { path: '/graph', component: Graph },
+    { path: '/customer-graph', meta: { requiresCustomerAuth: true }, component: CustomerGraph  },
     { path: '/login', name: 'login', meta: { requiresGuest: true }, component: Login },
     { path: '/past-services', component: PastServices,meta: { requiresCustomerOrSPAuth: true } },
     { path: '/sp-account',name: 'sp-account', component: ServiceProfessionalAccount,meta: { requiresServiceProfessionalAuth: true } },
     { path: '/sp-dash',name: 'sp-dash', component: SpDash,meta: { requiresServiceProfessionalAuth: true } },
+    { path: '/sp-graph', meta: { requiresServiceProfessionalAuth: true }, component: SPGraphView  },
     { path: '/pending-requests', component: PendingRequests,meta: { requiresServiceProfessionalAuth: true } },
     { path: '/register', name: 'register', meta: { requiresGuest: true }, component: Register },
     { path: '/remarks', component: ViewRemarks },

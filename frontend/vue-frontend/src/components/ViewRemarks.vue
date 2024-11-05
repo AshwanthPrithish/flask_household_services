@@ -20,19 +20,19 @@ import axios from 'axios';
 export default {
     data() {
         return {
-            remarks: []  // Array to hold remarks data
+            remarks: []  
         };
     },
     mounted() {
-        this.fetchRemarks();  // Fetch remarks when the component is mounted
+        this.fetchRemarks();  
     },
     methods: {
         async fetchRemarks() {
             try {
                 const response = await axios.get('http://localhost:5001/remarks');
-                this.remarks = response.data;  // Store fetched data in the component state
+                this.remarks = response.data;  
             } catch (error) {
-                console.error('Error fetching remarks:', error);  // Handle error
+                console.error('Error fetching remarks:', error);  
             }
         }
     }

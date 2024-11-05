@@ -1084,7 +1084,7 @@ def past_services():
 def save_graph(filename, role, name):
    _, ext = os.path.splitext(filename)
    picture_fn = f"{role}_{name}" + ext
-   picture_path = os.path.join(app.root_path, f'static/graphs', picture_fn)
+   picture_path = os.path.join(app.root_path, f'static/graphs/{role}_graphs/', picture_fn)
    
    i = Image.open(filename)
    i.save(picture_path)
@@ -1095,9 +1095,8 @@ def save_graph(filename, role, name):
 @login_required
 def customer_graphs():
    if current_user.role != 'customer':
-      flash("Access Denied! You do not have permission to view this page.", "danger")
-      return redirect(url_for("home"))
-   
+       return jsonify(error="Access Denied!"), 403
+
    service_requests = Service_Request.query.filter_by(customer_id=current_user.id).all()
    service_requests = [service.service.name for service in service_requests]
    value_counts = {}
@@ -1114,11 +1113,11 @@ def customer_graphs():
    plt.close()
 
    image = save_graph(picture_path, 'customer', 'requests')
-   image_url = url_for('static', filename='graphs/' + image)
+   image = f'graphs/{current_user.role}_graphs/' + image
 
    service_requests = Service_Request.query.filter_by(customer_id=current_user.id).all()
    service_requests = [service.service_status for service in service_requests]
-   value_counts = {}
+   value_counts  = {}
    for value in service_requests:
       value_counts[value] = value_counts.get(value, 0) + 1
 
@@ -1126,15 +1125,15 @@ def customer_graphs():
    plt.figure(figsize=(8, 8))
    plt.pie(value_counts.values(), labels=value_counts.keys(), autopct='%1.1f%%', startangle=140) # type: ignore
    plt.axis('equal')
-   plt.title('Distribution of Service Status availed')
+   plt.title('Distribution of Service Status')
    picture_path = os.path.join(app.root_path, f'static/graphs/two.png')
    plt.savefig(picture_path)
    plt.close()
 
    image1 = save_graph(picture_path, 'customer', 'status')
-   image_url1 = url_for('static', filename='graphs/' + image1)
+   image1 = f'graphs/{current_user.role}_graphs/' + image1
 
-   return render_template('graph.html', image=image_url,image1=image_url1, image2="",title="Graph")
+   return jsonify({'one':image,'two': image1,'three':""}), 200
 
  
 
@@ -1142,8 +1141,7 @@ def customer_graphs():
 @login_required
 def sp_graphs():
    if current_user.role != 'service_professional':
-      flash("Access Denied! You do not have permission to view this page.", "danger")
-      return redirect(url_for("home"))
+     return jsonify(error="Access Denied!"), 403
    
    service_requests = Service_Request.query.filter_by(service_professional_id=current_user.id).all()
    service_requests = [service.customer.username for service in service_requests]
@@ -1161,7 +1159,7 @@ def sp_graphs():
    plt.close()
 
    image = save_graph(picture_path, 'service_professional', 'customers')
-   image_url = url_for('static', filename='graphs/' + image)
+   image = f'graphs/{current_user.role}_graphs/' + image
 
    service_requests = Service_Request.query.filter_by(service_professional_id=current_user.id).all()
    service_requests = [service.service_status for service in service_requests]
@@ -1179,9 +1177,9 @@ def sp_graphs():
    plt.close()
 
    image1 = save_graph(picture_path, 'service_professional', 'status')
-   image_url1 = url_for('static', filename='graphs/' + image1)
+   image1 = f'graphs/{current_user.role}_graphs/' + image1
 
-   return render_template('graph.html', image=image_url,image1=image_url1, image2="",title="Graph")
+   return jsonify({'one':image,'two': image1,'three':""}), 200
 
 
 
@@ -1208,7 +1206,7 @@ def admin_graphs():
    plt.close()
 
    image = save_graph(picture_path, 'admin', 'customers')
-   image_url = url_for('static', filename='graphs/' + image)
+   image = f'graphs/{current_user.role}_graphs/' + image
 
    service_requests = Service_Request.query.filter_by().all()
    service_requests = [service.service_status for service in service_requests]
@@ -1226,7 +1224,7 @@ def admin_graphs():
    plt.close()
 
    image1 = save_graph(picture_path, 'admin', 'status')
-   image_url1 = url_for('static', filename='graphs/' + image1)
+   image1 = f'graphs/{current_user.role}_graphs/' + image1
 
    service_requests = Service_Request.query.filter_by().all()
    service_requests = [service.service_professional.username for service in service_requests if service.service_professional != None]
@@ -1244,9 +1242,9 @@ def admin_graphs():
    plt.close()
 
    image2 = save_graph(picture_path, 'admin', 'service_professionals')
-   image_url2 = url_for('static', filename='graphs/' + image2)
+   image2 = f'graphs/{current_user.role}_graphs/' + image2
 
-   return render_template('graph.html', image=image_url,image1=image_url1, image2=image_url2,title="Graph")
+   return jsonify({'one':image,'two': image1,'three':image2}), 200
 
 
 @app.route("/test-mail")

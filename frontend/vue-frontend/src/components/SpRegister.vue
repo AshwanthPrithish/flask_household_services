@@ -4,7 +4,6 @@
         <fieldset class="form-group">
           <legend class="border-bottom mb-4">Join Today</legend>
   
-          <!-- Error Alert -->
           <div v-if="errorMessage" class="alert alert-danger" role="alert">
             {{ errorMessage }}
           </div>

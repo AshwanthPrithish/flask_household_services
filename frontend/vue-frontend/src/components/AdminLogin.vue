@@ -121,7 +121,7 @@
       clearErrorAfterDelay(errorType) {
         setTimeout(() => {
           this[errorType] = null;
-        }, 5000); // Clear error after 5 seconds
+        }, 5000);
       },
     }
   };

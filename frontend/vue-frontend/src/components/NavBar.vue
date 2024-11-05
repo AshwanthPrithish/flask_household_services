@@ -21,7 +21,7 @@
                 <router-link class="nav-link" to="/customer-dash">Dashboard</router-link>
               </li>
               <li class="nav-item">
-                <router-link class="nav-link" to="/graph">View Customer Graphs</router-link>
+                <router-link class="nav-link" to="/customer-graph">View Customer Graphs</router-link>
               </li>
               <li class="nav-item">
                 <router-link class="nav-link" to="/customer-requests">View Requested Services</router-link>
@@ -38,7 +38,7 @@
                 <router-link class="nav-link" to="/sp-dash">Dashboard</router-link>
               </li>
               <li class="nav-item">
-                <router-link class="nav-link" to="/graph">View Service Professional Graphs</router-link>
+                <router-link class="nav-link" to="/sp-graph">View Service Professional Graphs</router-link>
               </li>
               <li class="nav-item">
                 <router-link class="nav-link" to="/pending-requests">Pending Requests</router-link>
@@ -67,7 +67,7 @@
                 <router-link class="nav-link" to="/view-service-requests">View All Service Requests</router-link>
               </li>
               <li class="nav-item">
-                <router-link class="nav-link" to="/graph">View Admin Graphs</router-link>
+                <router-link class="nav-link" to="/admin-graph">View Admin Graphs</router-link>
               </li>
             </template>
             <li class="nav-item">
@@ -120,5 +120,5 @@ export default {
 </script>
 
 <style scoped>
-/* Add your custom styles here */
+
 </style>

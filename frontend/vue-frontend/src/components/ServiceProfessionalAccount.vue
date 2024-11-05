@@ -1,7 +1,6 @@
 <template>
   <div class="container">
     <div class="media">
-      <!-- Use the computed fullProfilePictureUrl -->
       <img :src="fullProfilePictureUrl" alt="Profile Picture" />
       <div class="media-body">
         <h4>{{ form.username }}</h4>
@@ -140,7 +139,7 @@ export default {
   methods: {
     async loadAccountData() {
       try {
-        const response1 = await axios.get('/fetch-services'); // Adjust endpoint as needed
+        const response1 = await axios.get('/fetch-services'); 
         this.serviceTypes = response1.data;
         
         const response = await axios.get('sp-account');
@@ -164,7 +163,7 @@ export default {
       formData.append('email', this.form.email);
       formData.append('experience', this.form.experience);
       formData.append('description', this.form.description);
-      formData.append('service_id', this.form.serviceType); // Fixed to use the ID directly
+      formData.append('service_id', this.form.serviceType); 
       if (this.form.picture) formData.append('picture', this.form.picture);
 
       try {

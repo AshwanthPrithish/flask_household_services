@@ -1,7 +1,6 @@
 <template>
   <div class="container">
     <div class="media">
-      <!-- Use the computed fullProfilePictureUrl -->
       <img :src="fullProfilePictureUrl" alt="Profile Picture" />
       <div class="media-body">
         <h4>{{ form.username }}</h4>
@@ -12,8 +11,6 @@
     <form @submit.prevent="updateCustomerAccount" enctype="multipart/form-data">
       <fieldset>
         <legend>Account Info</legend>
-
-        <!-- Form Fields Here (Username, Email, Address, etc.) -->
 
         <div class="form-group">
           <label for="UserName" class="form-control-label">UserName</label>
@@ -103,13 +100,13 @@ import axios from 'axios';
 export default {
   data() {
     return {
-      profilePictureUrl: '', // The image URL
+      profilePictureUrl: '', 
       form: {
         username: '',
         email: '',
         address: '',
         contact: '',
-        picture: null, // File data for the picture
+        picture: null,
       },
       errors: {}
     };
@@ -131,7 +128,7 @@ export default {
         this.form.email = data.email;
         this.form.address = data.address;
         this.form.contact = data.contact;
-        this.profilePictureUrl = data.profilePictureUrl; // Assuming the URL is relative
+        this.profilePictureUrl = data.profilePictureUrl; 
       } catch (error) {
         console.error('Failed to load account data:', error);
       }
