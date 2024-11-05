@@ -117,7 +117,7 @@ router.beforeEach((to, from, next) => {
         }
     } 
     else if(to.matched.some(record => record.meta.requiresCustomerOrSPAuth)){
-        if (store.state.isAuthenticated && (store.state.role === 'service_professional' || store.state.role === 'service_professional')) {
+        if (store.state.isAuthenticated && (store.state.role === 'customer' || store.state.role === 'service_professional')) {
              next(); 
             } else {
              next({ name: 'home' }); 

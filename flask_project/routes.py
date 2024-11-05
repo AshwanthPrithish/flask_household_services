@@ -1027,8 +1027,7 @@ def reject_request(request_id, service_professional_id):
 @login_required
 def past_services():
     if current_user.role == 'admin':
-        flash("Access Denied", "danger")
-        return redirect(url_for("home"))
+        return jsonify({"message": "Access Denied! You do not have permission to view this page."}), 403
 
     cache_key = f"past_services_{current_user.role}_{current_user.id}"
 
@@ -1082,8 +1081,7 @@ def past_services():
                     }
                 for sr in get_cached_data(cache_key) # type: ignore
             ]
-
-    return render_template("past_services.html", past_services=past_services)
+    return jsonify(past_services), 200
 
    
 def save_graph(filename, role, name):
