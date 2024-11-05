@@ -590,27 +590,32 @@ def services():
      cache_data(cache_key, services_, timeout=300)
   return render_template("services.html", service_list=services_, title="Services")
 
-
-@app.route("/service/new", methods=['GET', 'POST'])
+@app.route("/service/new", methods=['POST'])
 @login_required
 def new_service():
-  if current_user.role != "admin":
-    flash(f"Access Denied! You do not have permission to view this page.{current_user.role} acc", "danger")
-    return redirect(url_for("home"))
-  
-  form = ServiceForm()
-  if form.validate_on_submit():
-      if len(Service.query.filter(func.lower(Service.name).ilike(f"%{form.name.data.lower()}%")).all()) > 0:
-           flash('Service with that name already exists!', 'danger')
-           return redirect(url_for('new_service'))
-      service = Service(name=form.name.data, description=form.description.data,price=form.price.data) # type: ignore
-      db.session.add(service)
-      db.session.commit()
+    if current_user.role != "admin":
+        return jsonify({"message": "Access Denied! You do not have permission to view this page."}), 400
 
-      redis_client.delete("services_key")
-      flash('The Service has been created!', 'success')
-      return redirect(url_for('services'))
-  return render_template('create_service.html', title="New Service", form=form, legend='New Service')
+    form = ServiceForm()
+    if form.validate_on_submit():
+        if Service.query.filter(func.lower(Service.name) == form.name.data.lower()).first():
+            return jsonify({"message": "Service with that name already exists!"}), 400
+        
+        service = Service(
+            name=form.name.data,  # type: ignore
+            description=form.description.data, # type: ignore# type: ignore
+            price=form.price.data # type: ignore
+        )
+        db.session.add(service)
+        db.session.commit()
+        
+        redis_client.delete("services_key")
+        
+        return jsonify({"message": "The Service has been created!"}), 201
+    
+    errors = {field: error for field, error in form.errors.items()}
+    return jsonify({"errors": errors}), 400
+
   
 @app.route("/service/<int:service_id>/update", methods=['GET', 'POST'])
 @login_required

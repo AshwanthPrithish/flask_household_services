@@ -1,5 +1,6 @@
 import Vue from 'vue';
 import Router from 'vue-router';
+import AddService from './components/AddService.vue';
 import AdminDash from './components/AdminDash.vue';
 import AdminGraph from './components/AdminGraphView.vue';
 import AdminLogin from './components/AdminLogin.vue';
@@ -70,7 +71,7 @@ const routes = [
       component: ServicePage,
       props: true,
     },
-    { path: '/services', component: ServicesPage },
+    { path: '/services', name: 'services',component: ServicesPage },
     { path: '/sp-login', name: 'sp-login', meta: { requiresGuest: true }, component: SpLogin },
     { path: '/sp-register', name: 'sp-register', meta: { requiresGuest: true }, component: SpRegister },
     { path: '/submit-remark', component: SubmitRemark, meta:{ requiresCustomerAuth: true } },
@@ -80,6 +81,7 @@ const routes = [
       component: UpdateService,
       props: true, meta:{ requiresAdminAuth: true }
     },
+    { path: '/new-service', component: AddService, meta:{ requiresAdminAuth: true } },
     { path: '/view-customers', component: ViewCustomers, meta:{ requiresAdminAuth: true } },
     { path: '/view-remarks', component: ViewRemarks, meta:{ requiresAdminAuth: true } },
     { path: '/view-service-professionals', component: ViewServiceProfessionals, meta:{ requiresAdminAuth: true } },
