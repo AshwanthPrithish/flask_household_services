@@ -542,6 +542,41 @@ def customer_account():
         return jsonify({"message": "Account updated successfully"}), 200
     return jsonify({"error": "Bad Request"}), 400
 
+@app.route("/sp-account", methods=['GET', 'POST'])
+@login_required
+def sp_account():
+    if current_user.role != 'service_professional':
+        return jsonify({"error": "Unauthorized"}), 403
+
+    if request.method == 'GET':
+        service = Service.query.get_or_404(current_user.service_id)
+        service = service.get_as_dict()
+        return jsonify({
+            "username": current_user.username,
+            "email": current_user.email,
+            "description": current_user.description,
+            "experience": current_user.experience,
+            "service": service,
+            "profilePictureUrl": f'profile_pics/{current_user.role}_pics/{current_user.image_file}'
+        }), 200
+
+    elif request.method == 'POST':
+        data = request.form
+        if 'picture' in request.files:
+            picture_file = save_picture(request.files['picture'], 'service_professional_pics')
+            current_user.image_file = picture_file
+        current_user.username = data.get('username', current_user.username)
+        current_user.email = data.get('email', current_user.email)
+        current_user.description = data.get('description', current_user.description)
+        current_user.experience = data.get('experience', current_user.experience)
+        current_user.service_id = data.get('service_id', current_user.service_id)
+        db.session.commit()
+        
+        redis_client.delete("view_customers_key")
+        return jsonify({"message": "Account updated successfully"}), 200
+    return jsonify({"error": "Bad Request"}), 400
+
+
 @app.route("/account", methods=["GET", "POST"])
 @login_required
 def account():
