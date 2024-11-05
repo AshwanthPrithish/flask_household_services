@@ -19,6 +19,7 @@ import SearchResultsServiceProfessional from './components/SearchResultsServiceP
 import ServicePage from './components/ServicePage.vue';
 import ServicesPage from './components/ServicesPage.vue';
 import ServiceProfessionalAccount from './components/ServiceProfessionalAccount.vue';
+import SpDash from './components/SpDash.vue';
 import SpLogin from './components/SpLogin.vue';
 import SpRegister from './components/SpRegister.vue';
 import SubmitRemark from './components/SubmitRemark.vue';
@@ -45,6 +46,7 @@ const routes = [
     { path: '/login', name: 'login', meta: { requiresGuest: true }, component: Login },
     { path: '/past-services', component: PastServices,meta: { requiresCustomerOrSPAuth: true } },
     { path: '/sp-account',name: 'sp-account', component: ServiceProfessionalAccount,meta: { requiresServiceProfessionalAuth: true } },
+    { path: '/sp-dash',name: 'sp-dash', component: SpDash,meta: { requiresServiceProfessionalAuth: true } },
     { path: '/pending-requests', component: PendingRequests,meta: { requiresServiceProfessionalAuth: true } },
     { path: '/register', name: 'register', meta: { requiresGuest: true }, component: Register },
     { path: '/remarks', component: ViewRemarks },

@@ -467,7 +467,7 @@ def search_results_service():
         cache_data(cache_key, services, timeout=300)  
 
     if len(services) <= 0:
-        return jsonify({'error': f'No services found for the query {query}!'}), 404
+        return jsonify([]), 200
 
     return jsonify(services)
 
@@ -488,7 +488,7 @@ def search_results_service_professional():
         cache_data(cache_key, service_professionals, timeout=300)
 
     if len(service_professionals) <= 0:
-        return jsonify({'error': f'No service professionals found for the query {query}!'}), 404
+        return jsonify([]), 200
 
     return jsonify(service_professionals)
 
@@ -572,73 +572,9 @@ def sp_account():
         current_user.service_id = data.get('service_id', current_user.service_id)
         db.session.commit()
         
-        redis_client.delete("view_customers_key")
+        redis_client.delete("view_service_professionals_key")
         return jsonify({"message": "Account updated successfully"}), 200
     return jsonify({"error": "Bad Request"}), 400
-
-
-@app.route("/account", methods=["GET", "POST"])
-@login_required
-def account():
-  image_file = None
-  if current_user.role == "customer":
-        form = UpdateCustomerAccount()
-        if form.validate_on_submit():
-            if form.picture.data:
-               picture_file = save_picture(form.picture.data, 'student_pics')
-               current_user.image_file = picture_file
-               db.session.commit()
-            
-            current_user.username = form.username.data
-            current_user.email = form.email.data
-            current_user.address = form.address.data
-            current_user.contact = form.contact.data
-            db.session.commit()
-            cache_key = "view_customers_key"
-            redis_client.delete(cache_key)
-            flash('Your Account has been updated!', category='success')
-            return redirect(url_for('account'))
-        elif request.method == "GET":
-           form.username.data = current_user.username
-           form.email.data = current_user.email
-           form.address.data = current_user.address
-           form.contact.data = current_user.contact
-        image_file = url_for('static', filename='profile_pics/student_pics/' + current_user.image_file)
-        return render_template("customer_account.html", title="Student Account", image_file=image_file, form=form)
-  
-  elif current_user.role == "service_professional":
-        form = UpdateSPAccount()
-        form.service.choices = [service.name for service in Service.query.all()]
-        if form.validate_on_submit():
-            if form.picture.data:
-               picture_file = save_picture(form.picture.data, 'admin_pics')
-               current_user.image_file = picture_file
-               db.session.commit()
-            current_user.username = form.username.data
-            current_user.email = form.email.data
-            current_user.description = form.description.data
-            current_user.experience = form.experience.data
-            current_user.service_id = Service.query.filter_by(name=form.service.data).first().id # type: ignore
-            db.session.commit()
-            cache_key = "view_service_professionals_key"
-            redis_client.delete(cache_key)
-            flash('Your Account has been updated!', category='success')
-            return redirect(url_for('account'))
-        elif request.method == "GET":
-           form.username.data = current_user.username
-           form.email.data = current_user.email
-           form.description.data = current_user.description
-           form.experience.data = current_user.experience
-           selected_service = Service.query.filter_by(id=current_user.service_id).first().name # type: ignore
-           if selected_service:
-                form.service.data = selected_service
-
-        image_file = url_for('static', filename='profile_pics/admin_pics/' + current_user.image_file)
-        return render_template("sp_account.html", title="Librarian Account", image_file=image_file, form=form)
-  
-  else:
-        flash(f"Access Denied! You do not have permission to view this page.{current_user.role} acc", "danger")
-        return redirect(url_for("home"))
 
 
 @app.route("/services")
