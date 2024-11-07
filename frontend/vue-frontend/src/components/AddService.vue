@@ -7,6 +7,9 @@
         <div v-if="errorMessage" class="alert alert-danger" role="alert">
           {{ errorMessage }}
         </div>
+        <div v-if="successMessage" class="alert alert-success" role="alert">
+            {{ successMessage }}
+          </div>
 
         <div class="form-group">
           <label for="name" class="form-control-label">Name</label>
@@ -63,6 +66,7 @@ export default {
     return {
       legend: 'New Service',
       errorMessage: '',
+      successMessage: '',
       form: {
         name: '',
         price: '',
@@ -77,10 +81,9 @@ export default {
         this.errors = {};
         this.errorMessage = '';
 
-        await axios.post('/service/new', this.form);
-
+        const response = await axios.post('/service/new', this.form);
+        this.successMessage = response.data.message;
         this.$router.push({ name: 'services' });
-        alert('The Service has been created!');
       } catch (error) {
         if (error.response) {
           if (error.response.data.errors) {
@@ -88,7 +91,6 @@ export default {
           }
           if (error.response.data.message) {
             this.errorMessage = error.response.data.message;
-            console.log(this.errorMessage);
           }
         } else {
           this.errorMessage = 'An unexpected error occurred. Please try again.';

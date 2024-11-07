@@ -1,6 +1,7 @@
 import secrets
 import os
 import re
+from sqlite3 import IntegrityError
 import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
@@ -536,11 +537,14 @@ def customer_account():
         current_user.email = data.get('email', current_user.email)
         current_user.address = data.get('address', current_user.address)
         current_user.contact = data.get('contact', current_user.contact)
-        db.session.commit()
-        
-        redis_client.delete("view_customers_key")
-        return jsonify({"message": "Account updated successfully"}), 200
-    return jsonify({"error": "Bad Request"}), 400
+        try:
+            db.session.commit()
+            redis_client.delete("view_customers_key")
+            return jsonify({"message": "Account updated successfully"}), 200
+        except Exception:
+            db.session.rollback()  
+            return jsonify({"message": "Integrity Error: Email or username might already be in use."}), 400
+    return jsonify({"message": "Bad Request"}), 400
 
 @app.route("/sp-account", methods=['GET', 'POST'])
 @login_required
@@ -570,11 +574,14 @@ def sp_account():
         current_user.description = data.get('description', current_user.description)
         current_user.experience = data.get('experience', current_user.experience)
         current_user.service_id = data.get('service_id', current_user.service_id)
-        db.session.commit()
-        
-        redis_client.delete("view_service_professionals_key")
-        return jsonify({"message": "Account updated successfully"}), 200
-    return jsonify({"error": "Bad Request"}), 400
+        try:
+            db.session.commit()
+            redis_client.delete("view_service_professionals_key")
+            return jsonify({"message": "Account updated successfully"}), 200
+        except Exception:
+            db.session.rollback()
+            return jsonify({"message": "Integrity Error: Email or username might already be in use."}), 400
+    return jsonify({"message": "Bad Request"}), 400
 
 
 @app.route("/services")
@@ -588,7 +595,7 @@ def services():
      services_ = [service.get_as_dict() for service in Service.query.all()]
      services_.sort(key=lambda x: x.get('id'), reverse=False) # type: ignore
      cache_data(cache_key, services_, timeout=300)
-  return render_template("services.html", service_list=services_, title="Services")
+  return jsonify(services_), 200
 
 @app.route("/service/new", methods=['POST'])
 @login_required
@@ -620,32 +627,32 @@ def new_service():
 @app.route("/service/<int:service_id>/update", methods=['GET', 'POST'])
 @login_required
 def update_service(service_id):
-   if current_user.role != "admin":
-    flash(f"Access Denied! You do not have permission to view this page.{current_user.role}", "danger")
-    return redirect(url_for("home"))
-   else:
-      form=UpdateServiceForm()
-      service = Service.query.get_or_404(service_id)
-      if form.validate_on_submit():
-         service.name = form.name.data
-         service.description = form.description.data
-         service.price = form.price.data
-         db.session.commit()
-         redis_client.delete("services_key")
-         flash('Service updated!', 'success')
-         return redirect(url_for('services'))
-      elif request.method == "GET":
-         form.name.data = service.name
-         form.description.data = service.description
-         form.price.data = service.price  # type: ignore
-      return render_template("update_service.html", form=form)
+    if current_user.role != "admin":
+       return jsonify({"message": "Access Denied! You do not have permission to view this page."}), 400
+   
+    service = Service.query.get_or_404(service_id)
+    data = request.get_json()
+    form = UpdateServiceForm(data=data)
+
+    if form.validate():
+        try:
+            service.name = form.name.data # type: ignore
+            service.description = form.description.data # type: ignore
+            service.price = form.price.data # type: ignore
+            db.session.commit()
+            redis_client.delete("services_key")
+            return jsonify({"message": "Service updated!"}), 200
+        except Exception:
+            db.session.rollback()
+            return jsonify({"errors": {"name": ["A service with that name already exists."]}}), 400
+    errors = {field: error for field, error in form.errors.items()}
+    return jsonify({"errors": errors}), 400
 
 @app.route("/service/<int:service_id>/delete", methods=['POST'])
 @login_required
 def delete_service(service_id):
   if current_user.role != "admin":
-    flash(f"Access Denied! You do not have permission to view this page.{current_user.role}", "danger")
-    return redirect(url_for("home"))
+    return jsonify({"message": "Access Denied! You do not have permission to view this page."}), 400
   
   service = Service.query.get_or_404(service_id)
   service_requests = Service_Request.query.filter_by(service_id=service_id).all()
@@ -659,8 +666,7 @@ def delete_service(service_id):
   redis_client.delete("services_key")
   db.session.delete(service)
   db.session.commit()
-  flash('Service Deleted!', 'success')
-  return redirect(url_for('sections'))
+  return jsonify({'message': "Deleted the service"}), 200
   
 @app.route("/service/<int:service_id>")
 @login_required
@@ -670,12 +676,9 @@ def service(service_id):
     cached_data = get_cached_data(cache_key)
     
     if cached_data:
-        service = cached_data['service']
-        service_name = service["name"]
-        offered_by_professionals = cached_data['offered_by_professionals']
+        return jsonify(cached_data), 200
     else:
         service = Service.query.get_or_404(service_id)
-        service_name = service.name
         
         offered_by_professionals = Service_Professional.query.filter_by(service_id=service_id).all()
         offered_by_professionals = [
@@ -686,17 +689,12 @@ def service(service_id):
                 "experience": professional.experience,
                 "date_created": professional.date_created.isoformat(),
             }
-            for professional in offered_by_professionals
+            for professional in offered_by_professionals if "dummy" not in professional.username
         ]
 
         cache_data(cache_key, {'service': service.get_as_dict(), 'offered_by_professionals': offered_by_professionals}, timeout=300)  # Cache for 5 minutes
-    return render_template('service.html', name=service_name, service=service, offered_by_professionals=[{
-                "name": off["name"], # type: ignore
-                "email": off["email"], # type: ignore
-                "description": off["description"], # type: ignore
-                "experience": off["experience"], # type: ignore
-                "date_created": datetime.fromisoformat(off["date_created"]), # type: ignore
-            } for off in offered_by_professionals])
+        cached_data = get_cached_data(cache_key)
+        return jsonify(cached_data), 200
  
 def duration_to_timedelta(st):
     s = 0
@@ -715,86 +713,88 @@ def duration_to_timedelta(st):
     return timedelta(seconds=s)
 
 
-@app.route("/service/<int:service_id>/request_service", methods=['GET', 'POST'])
+@app.route("/service/<int:service_id>/request_service", methods=['POST'])
 @login_required
 def request_service(service_id):
     if current_user.role != 'customer':
-        flash("Access Denied! Only Customer can request Service", "danger")
-        return redirect(url_for("home"))
-    
-    form = ServiceRequestForm()
+        return jsonify({"flash": "Access Denied! Only customers can request services."}), 403
+
+    data = request.get_json()
+    date_of_request = datetime.strptime(data.get('date_of_request'), "%d-%m-%Y")
+    request_duration = data.get('request_duration')
+
+    errors = {}
+    if not date_of_request:
+        errors['date_of_request'] = 'Date of request is required.'
+    if not request_duration:
+        errors['request_duration'] = 'Request duration is required.'
+
+    if errors:
+        return jsonify({"errors": errors}), 400
 
     cache_key_requests_count = f"service_requests_count:{current_user.id}"
     cache_key_service_request = f"service_request:{current_user.id}:{service_id}"
-
     requests_count = get_cached_data(cache_key_requests_count)
 
     if requests_count is None:
-        requests_count = len(Service_Request.query.filter(Service_Request.customer_id == current_user.id, func.lower(Service_Request.service_status) != "completed").all())
+        requests_count = len(Service_Request.query.filter(
+            Service_Request.customer_id == current_user.id,
+            func.lower(Service_Request.service_status) != "completed"
+        ).all())
         cache_data(cache_key_requests_count, requests_count, timeout=300)
 
     service_request_exists = get_cached_data(cache_key_service_request)
 
     if service_request_exists is None:
-        service_request_exists = len(Service_Request.query.filter(Service_Request.customer_id == current_user.id, Service_Request.service_id == service_id, Service_Request.service_status != "completed").all()) > 0
+        service_request_exists = Service_Request.query.filter(
+            Service_Request.customer_id == current_user.id,
+            Service_Request.service_id == service_id,
+            Service_Request.service_status != "completed"
+        ).count() > 0
         cache_data(cache_key_service_request, service_request_exists, timeout=300)
 
     if requests_count >= 5:
-        flash('You have already requested 5 services. Mark a service as complete to request this!', 'danger')
-        return redirect(url_for('home'))
+        return jsonify({"message": "You have already requested 5 services. Complete a service to request a new one."}), 400
     
     if service_request_exists:
-        flash('You have already requested this service!', 'danger')
-        return redirect(url_for('home'))
+        return jsonify({"message": "You have already requested this service."}), 400
 
-    previous_request = Service_Request.query.filter_by(customer_id=current_user.id, service_id=service_id).first()
+    previous_request = Service_Request.query.filter_by(
+        customer_id=current_user.id,
+        service_id=service_id
+    ).first()
     if previous_request and previous_request.service_status == "requested":
-        flash('You have already requested this service! Wait for admin approval of the previous request.', 'danger')
-        return redirect(url_for('home'))
+        return jsonify({"message": "You have already requested this service! Wait for admin approval of the previous request."}), 400
 
-    if form.validate_on_submit():
-        customer_id = current_user.id
-        duration = form.request_duration.data
-        td = duration_to_timedelta(duration)
-        date_of_completion = form.date_of_request.data + td
-        
-        
-        status = "requested"
-        new_request = Service_Request(
-                date_of_request=form.date_of_request.data, # type: ignore
-                customer_id=customer_id, # type: ignore
-                service_id=service_id, # type: ignore
-                date_of_completion=date_of_completion, # type: ignore
-                service_status=status # type: ignore
-            )
-        db.session.add(new_request)
-        db.session.commit()
+    duration_timedelta = duration_to_timedelta(request_duration)
+    date_of_completion = date_of_request + duration_timedelta
 
-        cache_key = f"customer_requests_{current_user.id}"
-        redis_client.delete(cache_key)
-        cache_key = f"pending_requests"
-        redis_client.delete(cache_key)
-        redis_client.delete("view_service_requests_key")
-        cache_data(cache_key_requests_count, requests_count + 1, timeout=300) 
-        cache_data(cache_key_service_request, True, timeout=300)  
+    new_request = Service_Request(
+        date_of_request=date_of_request, # type: ignore
+        customer_id=current_user.id,  # type: ignore
+        service_id=service_id,  # type: ignore
+        date_of_completion=date_of_completion,  # type: ignore
+        service_status="requested"  # type: ignore
+    )
+    db.session.add(new_request)
+    db.session.commit()
 
-        flash('Service Requested Successfully!', 'success')
-        return redirect(url_for('home'))
+    redis_client.delete(f"customer_requests_{current_user.id}")
+    redis_client.delete("view_service_requests_key")
+    cache_data(cache_key_requests_count, requests_count + 1, timeout=300)
+    cache_data(cache_key_service_request, True, timeout=300)
 
-    return render_template('add_service_request.html', title="Request this service", form=form)
-
+    return jsonify({"message": "Service requested successfully!"}), 200
 
 @app.route("/complete-request/<int:request_id>", methods=['GET', 'POST'])
 @login_required
 def mark_request_as_complete(request_id):
    if current_user.role != "customer":
-      flash(f"Access Denied! You do not have permission to view this page.", "danger")
-      return redirect(url_for("home"))
+      return jsonify({"error": "Access Denied! Only Customers can view requested services"}), 403
    request = Service_Request.query.filter_by(id=request_id).first()
 
    if request.service_status != "assigned": # type: ignore
-         flash(f"Service request is not yet assigned. Please wait to get it assigned first.", "danger")
-         return redirect(url_for('home'))
+        return jsonify({"error": "Service request is not yet assigned. Please wait to get it assigned first."}), 403
       
    request.service_status = "completed" # type: ignore
    cache_key = f"past_services_{current_user.role}_{current_user.id}"
@@ -803,26 +803,25 @@ def mark_request_as_complete(request_id):
    cache_key = f"customer_requests_{current_user.id}"
    redis_client.delete(cache_key)
    redis_client.delete("view_service_requests_key")
-   flash(f"Marked the service request as complete!", "success")
-   return redirect(url_for('submit_remarks', request_id=request_id))
+   return jsonify({"message": "Marked Service as complete"}), 200
 
 
 @app.route("/submit-remarks/<int:request_id>", methods=['GET', 'POST'])
 @login_required
 def submit_remarks(request_id):
-   if current_user.role != "customer":
-      flash(f"Access Denied! You do not have permission to view this page.", "danger")
-      return redirect(url_for("home"))
-   form = RemarkForm()
-   if form.validate_on_submit():
-      remark = Remarks(remarks=form.remark.data, service_request_id=request_id) # type: ignore
-      db.session.add(remark)
-      db.session.commit()
-      cache_key = "cached_remarks"
-      redis_client.delete(cache_key)
-      flash(f"Remarks submitted successfully!", "success")
-      return redirect(url_for('home'))
-   return render_template('submit_remark.html', title='Submit Remarks', form=form)
+    if current_user.role != "customer":
+      return jsonify({"message": "Access Denied! You do not have permission to view this page."}), 403
+    remark_text = request.get_json().get("remark")
+    if not remark_text:
+        return jsonify({"errors": {"remark": ["Remark cannot be empty."]}}), 400
+
+    remark = Remarks(remarks=remark_text, service_request_id=request_id) # type: ignore
+    db.session.add(remark)
+    db.session.commit()
+    cache_key = "cached_remarks"
+    redis_client.delete(cache_key)
+
+    return jsonify({"message": "Remarks submitted successfully!"}), 200
 
 @app.route("/remarks")
 def remarks():
@@ -855,8 +854,7 @@ def remarks():
 @login_required
 def cancel_request(request_id):
    if current_user.role != "customer":
-      flash(f"Access Denied! You do not have permission to view this page.", "danger")
-      return redirect(url_for("home"))
+      return jsonify({"error": "Access Denied! Only Customers can view requested services"}), 403
    request = Service_Request.query.filter_by(id=request_id).first()
    db.session.delete(request)
    db.session.commit()
@@ -865,60 +863,40 @@ def cancel_request(request_id):
    cache_key = "pending_requests"
    redis_client.delete(cache_key)
    redis_client.delete("view_service_requests_key")
-   flash(f"Cancelled the service request!", "danger")
-   return redirect(url_for('home'))
+   return jsonify({"message": "Cancelled request"}), 200
 
 
 @app.route('/customer-requests')
 @login_required
 def customer_requests():
     if current_user.role != 'customer':
-        flash(f"Access Denied! Only Customers can view requested services", "danger")
-        return redirect(url_for("home"))
+        return jsonify({"error": "Access Denied! Only Customers can view requested services"}), 403
 
     cache_key = f"customer_requests_{current_user.id}"
-
     cached_data = get_cached_data(cache_key)
 
     if cached_data is not None:
         details = cached_data  
     else:
-        service_requests = Service_Request.query.filter_by(customer_id=current_user.id).all()  # type: ignore
+        service_requests = Service_Request.query.filter_by(customer_id=current_user.id).all()
         details = []
 
         for service_request in service_requests:
-            service_name = service_request.service.name
-            customer_name = current_user.username
-            service_id = service_request.service.id
-            customer_id = current_user.id
-            service_status = service_request.service_status
-            date_of_request = service_request.date_of_request.strftime("%d-%m-%Y")
-            date_of_completion = service_request.date_of_completion.strftime("%d-%m-%Y")
-
-            if service_request.service_professional_id:
-                service_professional_name = service_request.service_professional.username
-                service_professional_id = service_request.service_professional_id
-            else:
-                service_professional_name = ""
-                service_professional_id = ""
-
             details.append({
                 'request_id': service_request.id,
-                'service_name': service_name,
-                'customer_name': customer_name,
-                'service_professional_name': service_professional_name,
-                'service_id': service_id,
-                'customer_id': customer_id,
-                'service_professional_id': service_professional_id,
-                'service_status': service_status,
-                'date_of_request': date_of_request,
-                'date_of_completion': date_of_completion
-            })  # type: ignore
-
+                'service_name': service_request.service.name,
+                'customer_id': current_user.id,
+                'customer_name': current_user.username,
+                'service_professional_name': service_request.service_professional.username if service_request.service_professional_id else "",
+                'service_professional_id': service_request.service_professional_id if service_request.service_professional_id else "",
+                'service_id': service_request.service.id,
+                'service_status': service_request.service_status,
+                'date_of_request': service_request.date_of_request.strftime("%d-%m-%Y"),
+                'date_of_completion': service_request.date_of_completion.strftime("%d-%m-%Y")
+            })
         cache_data(cache_key, details, timeout=300)
 
-    return render_template('customer_requests.html', requested_services=details, title='Requests')
-
+    return jsonify({'services':details}), 200
 
 
 @app.route('/pending-requests')
@@ -1248,175 +1226,3 @@ def admin_graphs():
    image2 = f'graphs/{current_user.role}_graphs/' + image2
 
    return jsonify({'one':image,'two': image1,'three':image2}), 200
-
-
-@app.route("/test-mail")
-@login_required
-def test_mail():
-    # Send a monthly activity report for a specific customer
-    customer = current_user
-    if customer:
-        past_requests = Service_Request.query.filter_by(customer_id=customer.id, service_status="completed").all()
-        html_content = render_template('monthly_report.html', requests=past_requests, customer=customer)
-        msg = Message('Your Monthly Activity Report', recipients=["ashuarul2002@gmail.com"])
-        msg.html = html_content
-        mail.send(msg)
-    return f"Report sent to {customer.email}"
-
-# @app.route("/download/<int:book_id>")   
-# @login_required
-# def download_book(book_id):
-#    if current_user.role == "librarian" or len(BookIssue.query.filter_by(book_id=book_id,student_id=current_user.id).all()) <= 0:
-#     flash("Access Denied! You do not have permission to view this page.", "danger")
-#     return redirect(url_for("home"))
-#    else:
-#       lang_dict = {'hindi': 'Noto Sans Devanagari', 'tamil': 'Noto Serif Tamil', 'telugu': 'Noto Sans Telugu', 'malayalam': 'Noto Sans Malayalam', 'kannada': 'Noto Sans Kannada', 'english':''}
-#       book=Book.query.filter_by(id=book_id).first()
-#       lang = book.lang.lower()
-
-#       if lang not in lang_dict.keys():
-#          flash(f'Cannot download {lang} language book!', 'danger')
-#          return redirect(url_for("home"))
-      
-#       rendered = render_template('download_content.html', book=book, font_lang=lang_dict[lang])
-      
-#       config = pdfkit.configuration(wkhtmltopdf=r"C:\Program Files\wkhtmltopdf\bin\wkhtmltopdf.exe")
-#       pdf = pdfkit.from_string(rendered, configuration=config)
-
-#       response = make_response(pdf)
-#       response.headers['Content-Type'] = 'application/pdf'
-#       response.headers['Content-Disposition'] = 'inline;filename=output.pdf'
-
-#       return response
-   
-
-
-# # API Endpoints
-
-# # get books
-# @app.route("/api/books", methods=['GET'])
-# def api_get_books():
-#    books = Book.query.all()
-#    books = [{
-#    'id' : book.id,
-#    'author' : book.author,
-#    'lang' : book.lang,
-#    'content' : book.content,
-#    'librarian_id' : book.librarian_id,
-#    'genre_id' : book.genre_id} for book in books]
-#    return jsonify(books)
-
-# # post books
-# @app.route("/api/books/add", methods=['DELETE'])
-# @token_required
-# def api_add_book(user_from_token):
-#    data = request.json
-#    if user_from_token.role != 'librarian':
-#       return ({'message': 'Invalid credentials'}), 401
-   
-#    else:
-#       if len(Book.query.filter_by(title=data['title']).all()) > 0:
-#          return ({'message': 'Book already exists'}), 401
-#       year = datetime.strptime(data['release_year'], "%Y")
-#       book = Book(title=data['title'],author=data['author'],content=data['content'], lang=data['lang'], rating=data['rating'],release_year=year,librarian_id=user_from_token.id,genre_id=data['genre_id'])
-#       with app.app_context():
-#          db.session.add(book)
-#          db.session.commit()
-#       return jsonify({"message": "Successfully added the book"}), 200
-
-
-# #put books
-# @app.route("/api/books/update", methods=["PUT"])
-# @token_required
-# def api_update_book(user_from_token):
-#     if user_from_token.role != "librarian":
-#       return ({'message': 'Invalid credentials'}), 401
-  
-#     data = request.json
-#     title = data['title']
-#     id = Book.query.filter_by(title=title).first().id
-#     book = Book.query.get_or_404(id)
-#     if 'author' in data: book.author=data['author']
-#     if 'content' in data: book.content=data['content']
-#     if 'lang' in data: book.lang=data['lang']
-#     if 'rating' in data: book.rating=data['rating']
-#     if 'release_year' in data: book.release_year=data['release_year']
-#     db.session.commit()
-    
-#     return jsonify({"message": "Successfully updated the book"}), 200
-
-
-
-# #delete books
-# @app.route("/api/books/delete", methods=['POST'])
-# @token_required
-# def api_delete_book(user_from_token):
-#    data = request.json
-#    if user_from_token.role != 'librarian':
-#       return ({'message': 'Invalid credentials'}), 401
-   
-#    else:
-#       if len(Book.query.filter_by(title=data['title']).all()) < 0:
-#          return ({'message': 'Book does not exist'}), 401
-#       id = Book.query.filter_by(title=data['title']).first().id
-#       with app.app_context():
-#          book = Book.query.get_or_404(id)
-         
-#          feedbacks = FeedBack.query.filter_by(book_id=id).all()
-#          for feedback in feedbacks:
-#                db.session.delete(feedback)
-#                db.session.commit()
-         
-#          db.session.delete(book)
-#          db.session.commit()
-#       return jsonify({"message": "Successfully deleted the book"}), 200
-
-# # student login api
-# @app.route("/api/login", methods=['POST'])
-# def api_login():
-#   auth = request.json
-
-#   if auth and 'email' in auth and 'password' in auth and 'role' in auth:
-#      email = auth['email']
-#      password = auth['password']
-
-#      student = Student.query.filter_by(email=email).first()
-#      if(bcrypt.check_password_hash(student.password, password)):
-#             token = jwt.encode({'email': email, 'role': 'student'}, app.config['SECRET_KEY'])
-#             return jsonify({'token': token}), 200
- 
-#   return jsonify({'message': 'Invalid credentials'}), 401
-
-
-# # librarian login api
-# @app.route("/api/sp-login", methods=['POST'])
-# def api_login_librarian():
-#   auth = request.json
-
-#   if auth and 'email' in auth and 'password' in auth:
-#      email = auth['email']
-#      password = auth['password']
-
-#      librarian = Librarian.query.filter_by(email=email).first()
-#      if(bcrypt.check_password_hash(librarian.password, password)):
-#             token = jwt.encode({'email': email, 'role': 'librarian'}, app.config['SECRET_KEY'])
-#             return jsonify({'token': token}), 200
- 
-#   return jsonify({'message': 'Invalid credentials'}), 401
-
-
-# #get student books
-# @app.route("/api/student-books", methods=["GET"])
-# @token_required
-# def api_student_books(user_from_token):
-#    book_issues = BookIssue.query.filter_by(student_id=user_from_token.id).all()
-#    books = [Book.query.filter_by(id=book_issue.book_id).first() for book_issue in book_issues]
-#    books = [{
-#    'id' : book.id,
-#    'author' : book.author,
-#    'lang' : book.lang,
-#    'content' : book.content,
-#    'librarian_id' : book.librarian_id,
-#    'genre_id' : book.genre_id} for book in books]
-#    return jsonify(books)
-   

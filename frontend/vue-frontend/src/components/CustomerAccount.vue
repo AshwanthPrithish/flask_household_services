@@ -8,6 +8,14 @@
       </div>
     </div>
 
+    <div v-if="errorMessage" class="alert alert-danger" role="alert">
+          {{ errorMessage }}
+    </div>
+
+    <div v-if="successMessage" class="alert alert-success" role="alert">
+            {{ successMessage }}
+    </div>
+
     <form @submit.prevent="updateCustomerAccount" enctype="multipart/form-data">
       <fieldset>
         <legend>Account Info</legend>
@@ -108,6 +116,8 @@ export default {
         contact: '',
         picture: null,
       },
+      successMessage: '',
+      errorMessage: '',
       errors: {}
     };
   },
@@ -145,10 +155,13 @@ export default {
       if (this.form.picture) formData.append('picture', this.form.picture);
 
       try {
-        await axios.post('customer-account', formData);
-        alert('Account updated successfully!');
+        const response = await axios.post('customer-account', formData);
+        this.successMessage = response.data.message;
       } catch (error) {
         this.errors = error.response.data.errors || {};
+        if (error.response.data.message) {
+            this.errorMessage = error.response.data.message;
+          }
       }
     }
   }

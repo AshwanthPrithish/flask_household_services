@@ -32,6 +32,7 @@ import ViewRemarks from './components/ViewRemarks.vue';
 import ViewServiceProfessionals from './components/ViewServiceProfessionals.vue';
 import ViewServiceRequests from './components/ViewServiceRequests.vue';
 import store from './store';
+import AddServiceRequest from './components/AddServiceRequest.vue';
 
 Vue.use(Router);
 
@@ -74,12 +75,18 @@ const routes = [
     { path: '/services', name: 'services',component: ServicesPage },
     { path: '/sp-login', name: 'sp-login', meta: { requiresGuest: true }, component: SpLogin },
     { path: '/sp-register', name: 'sp-register', meta: { requiresGuest: true }, component: SpRegister },
-    { path: '/submit-remark', component: SubmitRemark, meta:{ requiresCustomerAuth: true } },
+    { path: '/submit-remark', name: 'submit-remark',props: true, component: SubmitRemark, meta:{ requiresCustomerAuth: true } },
     {
       path: '/update-service/:service_id',
       name: 'UpdateService',
       component: UpdateService,
       props: true, meta:{ requiresAdminAuth: true }
+    },
+    {
+      path: '/request-service/:service_id',
+      name: 'AddServiceRequest',
+      component: AddServiceRequest,
+      props: true, meta:{ requiresCustomerAuth: true }
     },
     { path: '/new-service', component: AddService, meta:{ requiresAdminAuth: true } },
     { path: '/view-customers', component: ViewCustomers, meta:{ requiresAdminAuth: true } },
