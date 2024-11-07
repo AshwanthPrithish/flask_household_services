@@ -251,7 +251,7 @@ def view_service_requests():
 def register():
     if current_user.is_authenticated:
         if current_user.role == "customer":
-            return jsonify({'redirect': url_for('home')}), 200
+            return jsonify({'message': "Already registed!"}), 200
         else:
             return jsonify({'message': "Access Denied! You do not have permission to view this page."}), 403
 
@@ -352,7 +352,7 @@ def customer_dash():
 def sp_register():
     if current_user.is_authenticated:
         if current_user.role == "service_professional":
-            return jsonify({'redirect': url_for('sp_dash')}), 200
+             return jsonify({"error": "Unauthorized"}), 403
         else:
             return jsonify({'message': "Access Denied! You do not have permission to view this page."}), 403
 
@@ -903,8 +903,7 @@ def customer_requests():
 @login_required
 def pending_requests():
     if current_user.role != "service_professional":
-        flash(f"Access Denied! You do not have permission to view this page. {current_user.role}", "danger")
-        return redirect(url_for("home"))
+         return jsonify({"error": "Access Denied! Only Service Professionals can view requested services"}), 403
 
     cache_key = "pending_requests"
 
@@ -938,7 +937,7 @@ def pending_requests():
 
         cache_data(cache_key, details, timeout=300)
 
-    return render_template('pending_requests.html', title="Pending Requests", requests=details)
+    return jsonify({'pending_requests': details}), 200
 
 
 @app.route('/export_csv')
@@ -956,8 +955,7 @@ def trigger_export():
 @login_required
 def accept_request(request_id, service_professional_id):
    if current_user.role != "service_professional":
-     flash(f"Access Denied! You do not have permission to view this page.{current_user.role}", "danger")
-     return redirect(url_for("home"))
+      return jsonify({"error": "Access Denied! Only Service Professionals can accept requested services"}), 403
    
    request = Service_Request.query.filter_by(id=request_id).first()
    request.service_professional_id = service_professional_id # type: ignore
@@ -974,15 +972,13 @@ def accept_request(request_id, service_professional_id):
    redis_client.delete(cache_key)
    redis_client.delete("view_service_requests_key")
 
-   flash(f"Accepted Service", "success")
-   return redirect(url_for("home"))
+   return jsonify({"message": "Accepted Service Request!"}), 200
 
 @app.route('/reject-request/<int:request_id>/<int:service_professional_id>', methods=['GET','POST'])
 @login_required
 def reject_request(request_id, service_professional_id):
    if current_user.role != "service_professional":
-     flash(f"Access Denied! You do not have permission to view this page.{current_user.role}", "danger")
-     return redirect(url_for("home"))
+     return jsonify({"error": "Access Denied! Only Service Professionals can accept requested services"}), 403
    
    
    request = Service_Request.query.filter_by(id=request_id).first()
@@ -998,7 +994,7 @@ def reject_request(request_id, service_professional_id):
    redis_client.delete(cache_key)
    redis_client.delete("view_service_requests_key")
    flash(f"Rejected Service", "success")
-   return redirect(url_for("home"))
+   return jsonify({"message": "Rejected Service Request!"}), 200
 
 
 @app.route('/past-services')
@@ -1168,8 +1164,7 @@ def sp_graphs():
 @login_required
 def admin_graphs():
    if current_user.role != 'admin':
-      flash("Access Denied! You do not have permission to view this page.", "danger")
-      return redirect(url_for("home"))
+       return jsonify({"error": "Unauthorized"}), 403
    
    service_requests = Service_Request.query.filter_by().all()
    service_requests = [service.customer.username for service in service_requests]
