@@ -943,13 +943,11 @@ def pending_requests():
 @app.route('/export_csv')
 def trigger_export():
    if current_user.role != "service_professional":
-     flash(f"Access Denied! You do not have permission to view this page.{current_user.role}", "danger")
-     return redirect(url_for("home"))
+    return jsonify({"error": "Access Denied! Only Service Professionals can accept requested services"}), 403
    
    professional_id = current_user.id
    task = export_as_csv.apply_async(args=[professional_id]) # type: ignore
-   flash(f"Export in progress", "success")
-   return redirect(url_for("home"))
+   return jsonify({"message": "Export Triggered"}), 200
 
 @app.route('/accept-request/<int:request_id>/<int:service_professional_id>', methods=['GET', 'POST'])
 @login_required

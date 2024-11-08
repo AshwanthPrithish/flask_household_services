@@ -2,6 +2,10 @@
     <div>
         <h1>HouseHold Services Hub - Service Professional {{ username }} Dashboard</h1>
 
+        <div v-if="successMessage" class="alert alert-success" role="alert">
+            {{ successMessage }}
+          </div>
+
         <div class="container">
             <form @submit.prevent="searchService">
                 <fieldset class="form-group">
@@ -37,6 +41,18 @@
                 </fieldset>
             </form>
         </div>
+
+        <div class="container">
+            <form @submit.prevent="triggerExport">
+                <fieldset class="form-group">
+                    <legend class="border-bottom mb-4">Trigger CSV Export</legend>
+                    
+                    <div class="form-group">
+                        <button type="submit" class="btn btn-outline-info">Trigger</button>
+                    </div>
+                </fieldset>
+            </form>
+        </div>
     </div>
 </template>
 
@@ -52,6 +68,7 @@ export default {
             serviceError: '', 
             serviceProfessional: '',
             serviceProfessionalError: '',
+            successMessage: '',
         };
     },
     computed: {
@@ -89,6 +106,14 @@ export default {
                 console.error('Error searching for service professional:', error);
             }
         },
+        async triggerExport(){
+            try {
+                const response = await axios.get('http://localhost:5001/export_csv');
+                this.successMessage = response.data.message;
+            } catch (error) {
+                console.error('Error triggering export:', error);
+            }
+        }
     },
     created() {
         this.fetchAuthStatus();
