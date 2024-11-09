@@ -26,7 +26,7 @@
             <b>Name:</b> {{ professional.name }}<br />
             <b>Email:</b> {{ professional.email }}<br />
             <b>Description:</b> {{ professional.description }}<br />
-            <b>Experience:</b> {{ professional.experience }} years<br />
+            <b>Experience:</b> {{ professional.experience }}<br />
             <b>Date Created:</b> {{ professional.date_created }}<br />
           </div>
         </div>

@@ -1,6 +1,14 @@
 <template>
     <div class="container">
       <form @submit.prevent="submitRequest">
+        <div v-if="errorMessage" class="alert alert-danger" role="alert">
+      {{ errorMessage }}
+    </div>
+
+    <div v-if="successMessage" class="alert alert-success" role="alert">
+      {{ successMessage }}
+    </div>
+
         <fieldset class="form-group">
           <legend class="border-bottom mb-4">Request this Service</legend>
   
@@ -32,10 +40,6 @@
   
           <button type="submit" class="btn btn-outline-info">Submit</button>
         </fieldset>
-        
-        <div v-if="flashMessage" :class="`alert alert-${flashType}`" role="alert">
-          {{ flashMessage }}
-        </div>
       </form>
     </div>
   </template>
@@ -52,8 +56,8 @@
           request_duration: ''
         },
         errors: {},
-        flashMessage: '',
-        flashType: ''
+        successMessage: '',
+        errorMessage: ''
       };
     },
     methods: {
@@ -69,13 +73,13 @@
 
             try {
                 const response = await axios.post(`/service/${this.service_id}/request_service`, requestData);
-                this.flashMessage = response.data.message;
+                this.successMessage = response.data.message;
                 this.formErrors = {}; 
             } catch (error) {
                 if (error.response && error.response.data.errors) {
                 this.formErrors = error.response.data.errors;
-                } else if (error.response && error.response.data.flash) {
-                this.flashMessage = error.response.data.flash;
+                } else if (error.response && error.response.data.message) {
+                this.errorMessage = error.response.data.message;
                 } else {
                 console.error('Error submitting form:', error);
                 }

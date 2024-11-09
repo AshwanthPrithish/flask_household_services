@@ -117,7 +117,7 @@
         password: '',
         address: '',
         contact: '',
-        confirmPassword: '',
+        confirm_password: '',
         errors: {
           username: [],
           email: [],
@@ -134,7 +134,7 @@
   },
     methods: {
       async submitForm() {
-        this.errors = { username: [], email: [], password: [], confirmPassword: [],address: [], contact: []};
+        this.errors = { username: [], email: [], password: [], confirm_password: [],address: [], contact: []};
         this.errorMessage = ''; 
         try {
           await axios.post('http://localhost:5001/register', {
@@ -143,7 +143,7 @@
             password: this.password,
             contact: this.contact,
             address: this.address,
-            confirm_password: this.confirmPassword,
+            confirm_password: this.confirm_password,
             csrf_token: this.csrf
           });
           this.$router.push({ name: 'login' });

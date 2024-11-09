@@ -1,7 +1,7 @@
 <template>
   <div class="container">
     <div class="media">
-      <img :src="fullProfilePictureUrl" alt="Profile Picture" />
+      <img v-if="fullProfilePictureUrl" :src="fullProfilePictureUrl" alt="Profile Picture" />
       <div class="media-body">
         <h4>{{ form.username }}</h4>
         <p>{{ form.email }}</p>
@@ -9,11 +9,11 @@
     </div>
 
     <div v-if="errorMessage" class="alert alert-danger" role="alert">
-          {{ errorMessage }}
+      {{ errorMessage }}
     </div>
 
     <div v-if="successMessage" class="alert alert-success" role="alert">
-            {{ successMessage }}
+      {{ successMessage }}
     </div>
 
     <form @submit.prevent="updateCustomerAccount" enctype="multipart/form-data">
@@ -69,7 +69,7 @@
             v-model="form.contact"
             class="form-control form-control-lg"
             :class="{ 'is-invalid': errors.contact && errors.contact.length }"
-            id="email"
+            id="contact"
           />
           <div v-if="errors.contact && errors.contact.length" class="invalid-feedback">
             <span v-for="error in errors.contact" :key="error">{{ error }}</span>
@@ -96,7 +96,6 @@
         <div class="form-group">
           <button type="submit" class="btn btn-outline-info">Submit</button>
         </div>
-
       </fieldset>
     </form>
   </div>
@@ -108,7 +107,7 @@ import axios from 'axios';
 export default {
   data() {
     return {
-      profilePictureUrl: '', 
+      profilePictureUrl: '',
       form: {
         username: '',
         email: '',
@@ -134,11 +133,11 @@ export default {
       try {
         const response = await axios.get('customer-account');
         const data = response.data;
-        this.form.username = data.username;
-        this.form.email = data.email;
-        this.form.address = data.address;
-        this.form.contact = data.contact;
-        this.profilePictureUrl = data.profilePictureUrl; 
+        this.form.username = data.username || '';
+        this.form.email = data.email || '';
+        this.form.address = data.address || '';
+        this.form.contact = data.contact || '';
+        this.profilePictureUrl = data.profilePictureUrl || '';
       } catch (error) {
         console.error('Failed to load account data:', error);
       }
@@ -158,10 +157,10 @@ export default {
         const response = await axios.post('customer-account', formData);
         this.successMessage = response.data.message;
       } catch (error) {
-        this.errors = error.response.data.errors || {};
+        this.errors = error.response?.data?.errors || {};
         if (error.response.data.message) {
-            this.errorMessage = error.response.data.message;
-          }
+          this.errorMessage = error.response.data.message;
+        }
       }
     }
   }
